@@ -1,4 +1,5 @@
 import { FontAwesome } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
@@ -15,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import StyledAlert from '../components/StyledAlert'; // Asegúrate de tener este componente
+import StyledAlert from '../components/StyledAlert';
 import styles from '../styles/LoginPstyles';
 
 const LoginP = () => {
@@ -51,6 +52,14 @@ const LoginP = () => {
       const data = await response.json();
 
       if (response.ok && data.message === 'Inicio de sesión exitoso') {
+        // ✅ Guardar token en AsyncStorage
+        if (data.token) {
+          await AsyncStorage.setItem('token', data.token);
+          console.log('Token guardado correctamente');
+        } else {
+          console.warn('No se recibió token del servidor');
+        }
+
         setShowPermissionModal(true);
       } else {
         showStyledAlert(data.message || 'Credenciales incorrectas');

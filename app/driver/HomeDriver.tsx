@@ -4,15 +4,15 @@ import * as Location from "expo-location";
 import { ExternalPathString, RelativePathString, router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Image,
-    Linking,
-    StatusBar,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Image,
+  Linking,
+  StatusBar,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import styles from "../styles/HomeDriverPstyles";
@@ -30,19 +30,20 @@ const HomeDriver = () => {
   });
 
   const [rideRequest, setRideRequest] = useState({
-    pickupLocation: "Av. Circunvalar #9-42, Belen, Cali, Valle del Cauca",
-    destination: "Centro Comercial Palmetto",
-    distance: 3.5,
-    estimatedTime: 12,
-    passenger: {
-      name: "Carolina Gómez",
-      phone: "+57 315 789 4321",
-      whatsapp: "+573157894321",
-      photo: "https://i.pravatar.cc/150?img=23",
-      latitude: 3.4409,
-      longitude: -76.5225,
-    },
-  });
+  pickupLocation: "Av. Circunvalar #9-42, Belen, Cali, Valle del Cauca",
+  destination: "Centro Comercial Palmetto",
+  distance: 3.5,
+  estimatedTime: 12,
+  price: 8500, // Nuevo campo para el precio
+  passenger: {
+    name: "Carolina Gómez",
+    phone: "+57 315 789 4321",
+    whatsapp: "+573157894321",
+    photo: "https://i.pravatar.cc/150?img=23",
+    latitude: 3.4409,
+    longitude: -76.5225,
+  },
+});
 
   const [routeToPickup, setRouteToPickup] = useState<{ latitude: number; longitude: number }[]>([]);
 
@@ -189,63 +190,78 @@ const HomeDriver = () => {
       </View>
 
       {showRideRequest && (
-        <Animated.View style={[styles.rideRequestContainer, { opacity: rideRequestOpacity, transform: [{ translateY: rideRequestTranslateY }] }]}>
-          <View style={styles.rideRequestHeader}>
-            <Text style={styles.rideRequestTitle}>Nueva solicitud de viaje</Text>
-          </View>
+  <Animated.View style={[styles.rideRequestContainer, { opacity: rideRequestOpacity, transform: [{ translateY: rideRequestTranslateY }] }]}>
+    {/* Header con precio destacado */}
+    <View style={styles.rideRequestHeader}>
+      <View style={styles.headerTop}>
+        <Text style={styles.rideRequestTitle}>Nueva solicitud</Text>
+        <View style={styles.priceContainer}>
+          <Text style={styles.priceAmount}>${rideRequest.price.toLocaleString()}</Text>
+          <Text style={styles.priceLabel}>COP</Text>
+        </View>
+      </View>
+    </View>
 
-          <View style={styles.passengerInfoContainer}>
-            <Image source={{ uri: rideRequest.passenger.photo }} style={styles.passengerPhoto} />
-            <View style={styles.passengerDetails}>
-              <Text style={styles.passengerName}>{rideRequest.passenger.name}</Text>
-            </View>
-            <View style={styles.contactButtons}>
-              <TouchableOpacity style={styles.contactButton} onPress={openWhatsApp}>
-                <FontAwesome name="whatsapp" size={24} color="#25D366" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.contactButton} onPress={callPassenger}>
-                <FontAwesome name="phone" size={24} color="#FF69B4" />
-              </TouchableOpacity>
-            </View>
-          </View>
+    {/* Información del pasajero */}
+    <View style={styles.passengerSection}>
+      <View style={styles.passengerInfo}>
+        <Image source={{ uri: rideRequest.passenger.photo }} style={styles.passengerAvatar} />
+        <Text style={styles.passengerName}>{rideRequest.passenger.name}</Text>
+      </View>
+      <View style={styles.contactActions}>
+        <TouchableOpacity style={styles.whatsappButton} onPress={openWhatsApp}>
+          <FontAwesome name="whatsapp" size={20} color="#25D366" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.callButton} onPress={callPassenger}>
+          <FontAwesome name="phone" size={20} color="#FF69B4" />
+        </TouchableOpacity>
+      </View>
+    </View>
 
-          <View style={styles.divider} />
-
-          <View style={styles.rideRequestDetails}>
-            <View style={styles.locationRow}>
-              <View style={styles.locationPoint} />
-              <Text style={styles.locationText}>{rideRequest.pickupLocation}</Text>
-            </View>
-            <View style={styles.verticalLine} />
-            <View style={styles.locationRow}>
-              <View style={[styles.locationPoint, styles.destinationPoint]} />
-              <Text style={styles.locationText}>{rideRequest.destination}</Text>
-            </View>
+    {/* Ruta del viaje */}
+    <View style={styles.routeSection}>
+      <View style={styles.routeContainer}>
+        <View style={styles.routeIndicator}>
+          <View style={styles.pickupDot} />
+          <View style={styles.routeLine} />
+          <View style={styles.destinationDot} />
+        </View>
+        <View style={styles.locationTexts}>
+          <View style={styles.locationItem}>
+            <Text style={styles.locationLabel}>Recoger en</Text>
+            <Text style={styles.locationAddress}>{rideRequest.pickupLocation}</Text>
           </View>
-
-          <View style={styles.rideMetrics}>
-            <View style={styles.metricItem}>
-              <FontAwesome name="clock-o" size={18} color="#FF69B4" />
-              <Text style={styles.metricText}>{rideRequest.estimatedTime} min</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <FontAwesome name="map-marker" size={18} color="#FF69B4" />
-              <Text style={styles.metricText}>{rideRequest.distance} km</Text>
-            </View>
+          <View style={styles.locationItem}>
+            <Text style={styles.locationLabel}>Destino</Text>
+            <Text style={styles.locationAddress}>{rideRequest.destination}</Text>
           </View>
+        </View>
+      </View>
+    </View>
 
-          <View style={styles.rideRequestActions}>
-            <TouchableOpacity style={styles.rejectButton} onPress={handleRejectRide}>
-              <FontAwesome name="close" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Rechazar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptRide}>
-              <FontAwesome name="check" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Aceptar</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
+    {/* Información del viaje */}
+    <View style={styles.tripInfoSection}>
+      <View style={styles.tripInfoItem}>
+        <FontAwesome name="road" size={16} color="#666" />
+        <Text style={styles.tripInfoText}>{rideRequest.distance} km</Text>
+      </View>
+      <View style={styles.tripInfoItem}>
+        <FontAwesome name="clock-o" size={16} color="#666" />
+        <Text style={styles.tripInfoText}>{rideRequest.estimatedTime} min</Text>
+      </View>
+    </View>
+
+    {/* Botones de acción */}
+    <View style={styles.actionButtonsContainer}>
+      <TouchableOpacity style={styles.declineButton} onPress={handleRejectRide}>
+        <Text style={styles.declineButtonText}>Rechazar</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptRide}>
+        <Text style={styles.acceptButtonText}>Aceptar</Text>
+      </TouchableOpacity>
+    </View>
+  </Animated.View>
+)}
 
       <LinearGradient colors={['#FFE4F3', '#FFC1E3']} style={styles.driverFooter}>
         <View style={styles.footerContent}>

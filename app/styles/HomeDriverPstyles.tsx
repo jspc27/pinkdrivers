@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions, Platform } from "react-native";
+import { Dimensions, Platform, StyleSheet } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -163,191 +163,219 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
     
-    // Estilos para el panel de solicitud de viaje
-    rideRequestContainer: {
-        position: "absolute",
-        bottom: 150, // Posicionado por encima del footer
-        left: 20,
-        right: 20,
-        backgroundColor: "#fff",
-        borderRadius: 16,
-        padding: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 8,
-        zIndex: 8,
-    },
-    rideRequestHeader: {
+   
+    
+   // Estilos para el nuevo diseño de solicitud
+rideRequestContainer: {
+  position: 'absolute',
+  bottom: 200,
+  left: 20,
+  right: 20,
+  backgroundColor: '#fff',
+  borderRadius: 16,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.15,
+  shadowRadius: 12,
+  elevation: 6,
+},
+rideRequestHeader: {
         marginBottom: 12,
     },
-    rideRequestTitle: {
-        fontSize: 18,
-        fontWeight: "700",
-        color: "#333",
-    },
-    
-    // Nuevos estilos para la información del pasajero
-    passengerInfoContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 8,
-        paddingBottom: 8,
-    },
-    passengerPhoto: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
-        marginRight: 12,
-        borderWidth: 1.5,
-        borderColor: "#FFE4F3",
-    },
-    passengerDetails: {
-        flex: 1,
-    },
-    passengerName: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: "#333",
-        marginBottom: 2,
-    },
-    contactButtons: {
-        flexDirection: "row",
-    },
-    contactButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: "#f5f5f5",
-        justifyContent: "center",
-        alignItems: "center",
-        marginLeft: 8,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    phoneContainer: {
-        marginBottom: 10,
-    },
-    phoneText: {
-        fontSize: 14,
-        color: "#666",
-        marginLeft: 58, // Alineado con el nombre del pasajero
-    },
-    divider: {
-        height: 1,
-        backgroundColor: "#f0f0f0",
-        marginVertical: 10,
-    },
-    
-    rideRequestDetails: {
-        marginVertical: 12,
-    },
-    locationRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginVertical: 6,
-    },
-    locationPoint: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: "#4CAF50",
-        marginRight: 10,
-    },
-    destinationPoint: {
-        backgroundColor: "#FF69B4",
-    },
-    locationText: {
-        fontSize: 15,
-        color: "#333",
-        flex: 1,
-    },
-    verticalLine: {
-        width: 2,
-        height: 20,
-        backgroundColor: "#ddd",
-        marginLeft: 4,
-    },
-    rideMetrics: {
-        flexDirection: "row",
-        justifyContent: "space-around",
-        marginVertical: 12,
-        paddingVertical: 10,
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: "#f0f0f0",
-    },
-    metricItem: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    metricText: {
-        marginLeft: 5,
-        fontSize: 15,
-        fontWeight: "500",
-        color: "#555",
-    },
-    rideRequestActions: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginTop: 10,
-    },
-    acceptButton: {
-        backgroundColor: "#4CAF50",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        flex: 1,
-        marginLeft: 8,
-    },
-    rejectButton: {
-        backgroundColor: "#FF5252",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        flex: 1,
-        marginRight: 8,
-    },
-    actionButtonText: {
-        color: "#fff",
-        fontWeight: "600",
-        fontSize: 15,
-        marginLeft: 5,
-    },
-    
-    // Manteniendo estilos originales necesarios
-    input: {
-        width: "100%",
-        height: 50,
-        backgroundColor: "#fff",
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
-        shadowRadius: 3,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: "#f0f0f0",
-        fontSize: 15,
-    },
-    buttonText: {
-        color: "#FF69B4",
-        fontSize: 16,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
+
+headerTop: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+  paddingVertical: 12, // Cambiar de 16 a 12
+  borderBottomWidth: 1,
+  borderBottomColor: '#f0f0f0',
+},
+
+rideRequestTitle: {
+  fontSize: 18,
+  fontWeight: '600',
+  color: '#333',
+},
+
+priceContainer: {
+  alignItems: 'flex-end',
+},
+
+//precio
+priceAmount: {
+  fontSize: 30,
+  fontWeight: 'bold',
+  color: '#ff69B4',
+},
+
+priceLabel: {
+  fontSize: 12,
+  color: '#666',
+  marginTop: -2,
+},
+
+passengerSection: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+  paddingVertical: 12, // Cambiar de 16 a 12
+  borderBottomWidth: 1,
+  borderBottomColor: '#f0f0f0',
+},
+
+passengerInfo: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  flex: 1,
+},
+
+passengerAvatar: {
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  marginRight: 12,
+},
+
+passengerName: {
+  fontSize: 16,
+  fontWeight: '500',
+  color: '#333',
+},
+
+contactActions: {
+  flexDirection: 'row',
+  gap: 12,
+},
+
+whatsappButton: {
+  padding: 8,
+  borderRadius: 20,
+  backgroundColor: '#f8f8f8',
+},
+
+callButton: {
+  padding: 8,
+  borderRadius: 20,
+  backgroundColor: '#f8f8f8',
+},
+
+routeSection: {
+  paddingHorizontal: 20,
+  paddingVertical: 12, // Cambiar de 16 a 12
+  borderBottomWidth: 1,
+  borderBottomColor: '#f0f0f0',
+},
+
+routeContainer: {
+  flexDirection: 'row',
+  alignItems: 'flex-start',
+},
+
+routeIndicator: {
+  alignItems: 'center',
+  marginRight: 16,
+  paddingTop: 8,
+},
+
+pickupDot: {
+  width: 12,
+  height: 12,
+  borderRadius: 6,
+  backgroundColor: '#4CAF50',
+},
+
+routeLine: {
+  width: 2,
+  height: 30, // Cambiar de 40 a 30
+  backgroundColor: '#ddd',
+  marginVertical: 4,
+},
+
+
+
+destinationDot: {
+  width: 12,
+  height: 12,
+  borderRadius: 6,
+  backgroundColor: '#ff69B4',
+},
+
+locationTexts: {
+  flex: 1,
+},
+
+locationItem: {
+  marginBottom: 14, // Cambiar de 20 a 14
+},
+
+locationLabel: {
+  fontSize: 12,
+  color: '#666',
+  marginBottom: 4,
+},
+
+locationAddress: {
+  fontSize: 14,
+  color: '#333',
+  fontWeight: '400',
+},
+
+tripInfoSection: {
+  flexDirection: 'row',
+  paddingHorizontal: 20,
+  paddingVertical: 10, // Cambiar de 12 a 10
+  gap: 24,
+},
+
+tripInfoItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+},
+
+tripInfoText: {
+  fontSize: 14,
+  color: '#666',
+},
+
+actionButtonsContainer: {
+  flexDirection: 'row',
+  paddingHorizontal: 20,
+  paddingVertical: 12, // Cambiar de 16 a 12
+  gap: 12,
+},
+
+declineButton: {
+  flex: 1,
+  paddingVertical: 12, // Cambiar de 14 a 12
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#ddd',
+  alignItems: 'center',
+},
+
+declineButtonText: {
+  fontSize: 16,
+  fontWeight: '500',
+  color: '#666',
+},
+
+acceptButton: {
+  flex: 1,
+  paddingVertical: 12, // Cambiar de 14 a 12
+  borderRadius: 8,
+  backgroundColor: '#ff69B4',
+  alignItems: 'center',
+},
+
+acceptButtonText: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#fff',
+},
 });
 
 export default styles;

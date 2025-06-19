@@ -23,7 +23,8 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 5,
+    color: "white",
   },
   headerTitle: {
     fontSize: 20,
