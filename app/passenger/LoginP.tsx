@@ -20,7 +20,7 @@ import StyledAlert from '../components/StyledAlert';
 import styles from '../styles/LoginPstyles';
 
 const LoginP = () => {
-  const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -35,7 +35,7 @@ const LoginP = () => {
   };
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!telefono || !password) {
       showStyledAlert('Por favor completa todos los campos.');
       return;
     }
@@ -46,7 +46,7 @@ const LoginP = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ telefono, password }),
       });
 
       const data = await response.json();
@@ -85,7 +85,7 @@ const LoginP = () => {
 
   return (
     <>
-      {/* Modal de permiso */}
+      {/* Modal personalizado de permiso */}
       {showPermissionModal && (
         <Modal transparent animationType="fade" visible>
           <View style={{
@@ -142,6 +142,9 @@ const LoginP = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}
           >
+            <View style={styles.tituloContainer}>
+              <Text style={styles.logoText}>Alquiler</Text>
+            </View>
             <View style={styles.logoContainer}>
               <Image
                 source={require('../../assets/images/LogoPink.png')}
@@ -156,13 +159,13 @@ const LoginP = () => {
 
             <View style={styles.inputContainer}>
               <View style={styles.inputWrapper}>
-                <FontAwesome name="envelope" size={24} color="#FF1493" style={styles.inputIcon} />
+                <FontAwesome name="phone" size={24} color="#FF1493" style={styles.inputIcon} />
                 <TextInput
-                  placeholder="Correo electrónico"
+                  placeholder="Número de celular"
                   placeholderTextColor="#999"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  value={telefono}
+                  onChangeText={setTelefono}
+                  keyboardType="phone-pad"
                   autoCapitalize="none"
                   style={styles.input}
                 />
@@ -205,6 +208,11 @@ const LoginP = () => {
               >
                 <Text style={styles.signupLink}>Regístrate</Text>
               </TouchableOpacity>
+            </View>
+            <View style={styles.supportContainer}>
+              <Text style={styles.supportText}>Soporte </Text>
+              <FontAwesome name="whatsapp" size={24} color="#25D366" />
+              <Text style={styles.supportNumber}> +57 304 5720945</Text>
             </View>
           </KeyboardAvoidingView>
         </SafeAreaView>

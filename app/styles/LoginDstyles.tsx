@@ -98,6 +98,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textDecorationLine: 'underline',
   },
+  supportContainer: {
+  flexDirection: 'row',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginTop: 16,
+},
+supportText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '500',
+},
+supportNumber: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '500',
+},
 });
 
 export default styles;

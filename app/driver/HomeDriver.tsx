@@ -50,7 +50,7 @@ const HomeDriver = () => {
   const fetchRouteToPickup = async () => {
     const origin = `${region.latitude},${region.longitude}`;
     const destination = `${rideRequest.passenger.latitude},${rideRequest.passenger.longitude}`;
-    const apiKey = "TU_GOOGLE_MAPS_API_KEY";
+    const apiKey = "AIzaSyBz9w_gTpme9AMOMzJtRk3AYDO1-JlMKEA";
 
     try {
       const response = await fetch(
