@@ -1,23 +1,22 @@
 import { Dimensions, Platform, StyleSheet } from "react-native"
 
-const { width } = Dimensions.get("window")
+const { width, height } = Dimensions.get("window")
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
- mapContainer: {
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 1, // Asegurar que esté por debajo del formulario
-},
-// En el archivo de estilos, agregar:
-mapWithKeyboard: {
-  bottom: 0, // Asegurar que el mapa ocupe todo el espacio
-},
+  mapContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  mapWithKeyboard: {
+    bottom: 0,
+  },
   map: {
     flex: 1,
   },
@@ -42,16 +41,6 @@ mapWithKeyboard: {
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
     backgroundColor: "rgba(255, 255, 255, 1)",
-  },
-  collapseButton: {
-    alignSelf: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    marginTop: -20,
-  },
-  formScrollView: {
-    flex: 1,
   },
   input: {
     width: "100%",
@@ -211,14 +200,106 @@ mapWithKeyboard: {
     backgroundColor: "#ffb6c1",
     shadowOpacity: 0.1,
   },
-  formOverlay: {
+  // Nuevos estilos para el modal estilo DiDi
+  modalOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    zIndex: 4,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    zIndex: 20,
+  },
+  modalContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: width,
+    height: height,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 20,
+    zIndex: 21,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingBottom: 20,
+    backgroundColor: "#FF1493",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#fff",
+    flex: 1,
+    textAlign: "center",
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  modalScrollView: {
+    flex: 1,
+  },
+  modalInput: {
+    width: "100%",
+    height: 55,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  modalInputFocused: {
+    borderColor: "#FF1493",
+    borderWidth: 2,
+    backgroundColor: "#fff",
+    shadowColor: "#FF1493",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalButton: {
+    backgroundColor: "#FF1493",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 30,
+    shadowColor: "#FF1493",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  modalButtonDisabled: {
+    backgroundColor: "#ffb6c1",
+    shadowOpacity: 0.1,
   },
 })
 

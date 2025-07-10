@@ -134,6 +134,9 @@ const LoginD = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}
           >
+            <View style={styles.tituloContainer}>
+                          <Text style={styles.logoText}>Alquiler</Text>
+                        </View>
             <View style={styles.logoContainer}>
               <Image
                 source={require('../../assets/images/LogoPink.png')}
