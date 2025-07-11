@@ -7,81 +7,87 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Header styles
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
-    paddingBottom: 15,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
+  // Header styles - más compacto
+header: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 16,
+  paddingTop: Platform.OS === "ios" ? 45 : 25,
+  paddingBottom: 12,
+  backgroundColor: "rgba(255, 255, 255, 0.1)",
+  // Solo una línea sutil debajo:
+  borderBottomWidth: 1,
+  borderBottomColor: "rgba(0, 0, 0, 0.05)",
+},
 
   avatarSmall: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 42, // Reducido de 50 a 42
+    height: 42, // Reducido de 50 a 42
+    borderRadius: 21,
     borderWidth: 2,
     borderColor: "#FFE4F3",
   },
 
   headerInfo: {
     flex: 1,
-    marginLeft: 15,
+    marginLeft: 12, // Reducido de 15 a 12
   },
 
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16, // Reducido de 18 a 16
     fontWeight: "600",
     color: "#333",
   },
 
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13, // Reducido de 14 a 13
     color: "#666",
-    marginTop: 2,
+    marginTop: 1, // Reducido de 2 a 1
   },
+  
 
   statusIndicator: {
     alignItems: "center",
   },
 
   statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10, // Reducido de 12 a 10
+    height: 10, // Reducido de 12 a 10
+    borderRadius: 5,
   },
 
-  // Requests list styles
+  // Lista más eficiente
   requestsList: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16, // Reducido de 20 a 16
+    marginTop: 10,
   },
 
   listContainer: {
-    paddingBottom: 20,
+    paddingBottom: 16, // Reducido de 20 a 16
   },
 
-  // TARJETA OPTIMIZADA - MÁS COMPACTA
+  // TARJETA ULTRA COMPACTA
   rideRequestCard: {
     backgroundColor: "#fff",
-    borderRadius: 12, // Reducido de 16 a 12
-    marginBottom: 10, // Reducido de 16 a 10
+    borderRadius: 10, // Reducido de 12 a 10
+    marginBottom: 8, // Reducido de 10 a 8
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 }, // Reducido de 2 a 1
-    shadowOpacity: 0.08, // Reducido de 0.1 a 0.08
-    shadowRadius: 4, // Reducido de 8 a 4
-    elevation: 3, // Reducido de 4 a 3
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, // Reducido de 0.08 a 0.06
+    shadowRadius: 3, // Reducido de 4 a 3
+    elevation: 2, // Reducido de 3 a 2
   },
 
-  // HEADER MÁS COMPACTO
+  // HEADER MINIMALISTA
   requestHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 10, // Reducido de 16 a 10
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingHorizontal: 12, // Reducido de 10 a 12 para mejor balance
+    paddingVertical: 8, // Reducido y específico
+    borderBottomWidth: 0.5, // Línea más sutil
+    borderBottomColor: "#f5f5f5",
   },
 
   passengerInfo: {
@@ -90,73 +96,69 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // AVATAR MÁS PEQUEÑO
+  // AVATAR MÍNIMO
   passengerAvatar: {
-    width: 32, // Reducido de 40 a 32
-    height: 32, // Reducido de 40 a 32
-    borderRadius: 16, // Reducido de 20 a 16
-    marginRight: 8, // Reducido de 12 a 8
+    width: 28, // Reducido de 32 a 28
+    height: 28, // Reducido de 32 a 28
+    borderRadius: 14,
+    marginRight: 6, // Reducido de 8 a 6
   },
 
-  // NOMBRE MÁS PEQUEÑO
   passengerName: {
-    fontSize: 14, // Reducido de 16 a 14
+    fontSize: 13, // Reducido de 14 a 13
     fontWeight: "600",
     color: "#333",
   },
 
-  // BOTONES DE CONTACTO MÁS PEQUEÑOS
+  // BOTONES DE CONTACTO MINIMALISTAS
   contactActions: {
     flexDirection: "row",
-    gap: 6, // Reducido de 10 a 6
+    gap: 4, // Reducido de 6 a 4
   },
 
   whatsappButton: {
-    padding: 6, // Reducido de 8 a 6
-    borderRadius: 16, // Reducido de 20 a 16
+    padding: 4, // Reducido de 6 a 4
+    borderRadius: 12, // Reducido de 16 a 12
     backgroundColor: "#f8f8f8",
   },
 
   callButton: {
-    padding: 6, // Reducido de 8 a 6
-    borderRadius: 16, // Reducido de 20 a 16
+    padding: 4, // Reducido de 6 a 4
+    borderRadius: 12, // Reducido de 16 a 12
     backgroundColor: "#f8f8f8",
   },
 
-  // UBICACIONES MÁS COMPACTAS
+  // UBICACIONES EN LÍNEA HORIZONTAL (NUEVA OPTIMIZACIÓN)
   locationsContainer: {
-    padding: 10, // Reducido de 16 a 10
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingHorizontal: 12,
+    paddingVertical: 6, // Muy reducido
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#f5f5f5",
   },
 
-  locationRow: {
+  // NUEVO: Layout horizontal para ubicaciones
+  locationsRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 2, // Agregado para reducir espacio
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 
-  // PUNTOS DE UBICACIÓN MÁS PEQUEÑOS
+  locationCompact: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
   locationDot: {
-    width: 8, // Reducido de 12 a 8
-    height: 8, // Reducido de 12 a 8
-    borderRadius: 4, // Reducido de 6 a 4
+    width: 6, // Muy pequeño
+    height: 6,
+    borderRadius: 3,
     backgroundColor: "#4CAF50",
-    marginTop: 6, // Reducido de 8 a 6
-    marginRight: 8, // Reducido de 12 a 8
+    marginRight: 6,
   },
 
   destinationDot: {
     backgroundColor: "#FF69B4",
-  },
-
-  // LÍNEA DE RUTA MÁS CORTA
-  routeLine: {
-    width: 2,
-    height: 14, // Reducido de 20 a 14
-    backgroundColor: "#ddd",
-    marginLeft: 3, // Reducido de 5 a 3
-    marginVertical: 4, // Reducido de 8 a 4
   },
 
   locationInfo: {
@@ -164,184 +166,146 @@ const styles = StyleSheet.create({
   },
 
   locationLabel: {
-    fontSize: 10, // Reducido de 12 a 10
+    fontSize: 9, // Muy pequeño
     color: "#666",
-    marginBottom: 2, // Reducido de 4 a 2
+    marginBottom: 1,
   },
 
-  // DIRECCIONES MÁS PEQUEÑAS
   locationAddress: {
-    fontSize: 12, // Reducido de 14 a 12
+    fontSize: 11, // Reducido de 12 a 11
     fontWeight: "500",
     color: "#333",
-    marginBottom: 1, // Reducido de 2 a 1
+    // numberOfLines: 1, // Forzar una línea (esto se debe usar como prop en el componente, no en el estilo)
   },
 
   locationNeighborhood: {
-    fontSize: 10, // Reducido de 12 a 10
+    fontSize: 9, // Reducido de 10 a 9
     color: "#888",
   },
 
-  // INFORMACIÓN DEL VIAJE MÁS COMPACTA
+  // FLECHA ENTRE UBICACIONES
+  locationArrow: {
+    paddingHorizontal: 8,
+  },
+
+  // INFORMACIÓN DEL VIAJE EN UNA LÍNEA
   tripInfo: {
     flexDirection: "row",
-    paddingHorizontal: 10, // Reducido de 16 a 10
-    paddingVertical: 8, // Reducido de 12 a 8
-    gap: 16, // Reducido de 20 a 16
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingHorizontal: 12,
+    paddingVertical: 6, // Muy reducido
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#f5f5f5",
+  },
+
+  tripInfoLeft: {
+    flexDirection: "row",
+    gap: 12,
   },
 
   tripInfoItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4, // Reducido de 6 a 4
+    gap: 3, // Reducido de 4 a 3
   },
 
   tripInfoText: {
-    fontSize: 12, // Reducido de 14 a 12
+    fontSize: 11, // Reducido de 12 a 11
     color: "#666",
   },
 
-  // SECCIÓN DE PRECIO MÁS COMPACTA
+  // PRECIO Y NEGOCIACIÓN EN UNA LÍNEA
   priceSection: {
-    padding: 10, // Reducido de 16 a 10
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-
-  priceLabel: {
-    fontSize: 12, // Reducido de 14 a 12
-    color: "#666",
-    marginBottom: 6, // Reducido de 8 a 6
-  },
-
-  priceDisplayContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8, // Reducido
   },
 
-  // PRECIO MÁS PEQUEÑO
   priceAmount: {
-    fontSize: 20, // Reducido de 24 a 20
-    fontWeight: "bold",
-    color: "#FF69B4",
-  },
+  fontSize: 19,
+  fontWeight: "bold",
+  color: "#FF69B4",
+  paddingRight: 10, // 👈 espacio a la derecha
+},
 
-  // BOTÓN DE EDITAR PRECIO MÁS PEQUEÑO
+
   editPriceButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4, // Reducido de 6 a 4
-    paddingHorizontal: 8, // Reducido de 12 a 8
-    paddingVertical: 4, // Reducido de 6 a 4
-    borderRadius: 6, // Reducido de 8 a 6
+    gap: 3, // Reducido
+    paddingHorizontal: 6, // Reducido
+    paddingVertical: 3, // Reducido
+    borderRadius: 4, // Reducido
     borderWidth: 1,
     borderColor: "#FF69B4",
   },
 
   editPriceText: {
-    fontSize: 12, // Reducido de 14 a 12
+    fontSize: 10, // Reducido de 12 a 10
     color: "#FF69B4",
     fontWeight: "500",
   },
 
-  priceEditContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6, // Reducido de 8 a 6
-  },
-
-  priceInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6, // Reducido de 8 a 6
-    paddingHorizontal: 8, // Reducido de 12 a 8
-    paddingVertical: 6, // Reducido de 8 a 6
-    fontSize: 14, // Reducido de 16 a 14
-  },
-
-  submitPriceButton: {
-    backgroundColor: "#FF69B4",
-    paddingHorizontal: 12, // Reducido de 16 a 12
-    paddingVertical: 6, // Reducido de 8 a 6
-    borderRadius: 6, // Reducido de 8 a 6
-  },
-
-  submitPriceText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 12, // Agregado tamaño más pequeño
-  },
-
-  cancelPriceButton: {
-    paddingHorizontal: 8, // Reducido de 12 a 8
-    paddingVertical: 6, // Reducido de 8 a 6
-  },
-
-  cancelPriceText: {
-    color: "#666",
-    fontSize: 12, // Agregado tamaño más pequeño
-  },
-
-  // BOTONES DE ACCIÓN MÁS COMPACTOS
+  // BOTONES DE ACCIÓN MÁS PEQUEÑOS
   actionButtons: {
     flexDirection: "row",
-    padding: 10, // Reducido de 16 a 10
-    gap: 8, // Reducido de 12 a 8
+    paddingHorizontal: 12,
+    paddingVertical: 8, // Reducido
+    gap: 6, // Reducido
   },
 
   rejectButton: {
     flex: 1,
-    paddingVertical: 8, // Reducido de 12 a 8
-    borderRadius: 6, // Reducido de 8 a 6
+    paddingVertical: 6, // Muy reducido
+    borderRadius: 4, // Reducido
     borderWidth: 1,
     borderColor: "#ddd",
     alignItems: "center",
   },
 
   rejectButtonText: {
-    fontSize: 14, // Reducido de 16 a 14
+    fontSize: 12, // Reducido de 14 a 12
     fontWeight: "500",
     color: "#666",
   },
 
   acceptButton: {
     flex: 1,
-    paddingVertical: 8, // Reducido de 12 a 8
-    borderRadius: 6, // Reducido de 8 a 6
+    paddingVertical: 6, // Muy reducido
+    borderRadius: 4, // Reducido
     backgroundColor: "#FF69B4",
     alignItems: "center",
   },
 
   acceptButtonText: {
-    fontSize: 14, // Reducido de 16 a 14
+    fontSize: 12, // Reducido de 14 a 12
     fontWeight: "600",
     color: "#fff",
   },
 
-  // Empty states
+  // Estados vacíos más compactos
   emptyState: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: 32, // Reducido
   },
 
   emptyStateText: {
-    fontSize: 18,
+    fontSize: 16, // Reducido
     fontWeight: "600",
     color: "#666",
-    marginTop: 16,
+    marginTop: 12, // Reducido
     textAlign: "center",
   },
 
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: 13, // Reducido
     color: "#888",
-    marginTop: 8,
+    marginTop: 6, // Reducido
     textAlign: "center",
   },
 
@@ -349,33 +313,33 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
   },
 
   inactiveStateText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
     color: "#666",
-    marginTop: 16,
+    marginTop: 12,
     textAlign: "center",
   },
 
   inactiveStateSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#888",
-    marginTop: 8,
+    marginTop: 6,
     textAlign: "center",
   },
 
-  // Footer styles
+  // Footer más compacto
   footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    paddingBottom: Platform.OS === "ios" ? 35 : 25,
+    paddingHorizontal: 16, // Reducido
+    paddingVertical: 16, // Reducido
+    paddingBottom: Platform.OS === "ios" ? 30 : 20, // Reducido
   },
 
   footerContent: {
-    gap: 16,
+    gap: 12, // Reducido
   },
 
   statusContainer: {
@@ -383,45 +347,131 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
+    paddingHorizontal: 14, // Reducido
+    paddingVertical: 12, // Reducido
+    borderRadius: 10, // Reducido
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 2, // Reducido
     elevation: 2,
   },
 
   statusText: {
-    fontSize: 16,
+    fontSize: 15, // Reducido
     fontWeight: "600",
     color: "#333",
   },
 
   statusSwitch: {
-    transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
+    transform: [{ scaleX: 1.0 }, { scaleY: 1.0 }], // Tamaño normal
   },
 
   updateLocationButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6, // Reducido
     backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
+    paddingHorizontal: 14, // Reducido
+    paddingVertical: 12, // Reducido
+    borderRadius: 10, // Reducido
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
     elevation: 2,
   },
 
   updateLocationText: {
-    fontSize: 14,
+    fontSize: 13, // Reducido
     color: "#FF69B4",
     fontWeight: "500",
   },
+
+  // NUEVOS ESTILOS PARA EDICIÓN DE PRECIO COMPACTA
+  priceEditContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 6,
+},
+
+  priceInput: {
+  borderWidth: 1,
+  borderColor: "#ddd",
+  borderRadius: 6,
+  paddingHorizontal: 8,
+  paddingVertical: 6,
+  fontSize: 13,
+  width: 90,
+  textAlign: "center",
+  backgroundColor: "#fff",
+},
+
+ submitPriceButton: {
+  backgroundColor: "#FF69B4",
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 6,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+  submitPriceText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 10,
+  },
+
+ cancelPriceButton: {
+  paddingHorizontal: 8,
+  paddingVertical: 6,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+  cancelPriceText: {
+    color: "#666",
+    fontSize: 10,
+  },
+  priceMainContainer: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  borderBottomWidth: 0.5,
+  borderBottomColor: "#f5f5f5",
+},
+
+priceLeftSection: {
+  flex: 1,
+},
+
+priceLabel: {
+  fontSize: 9,
+  color: "#666",
+  marginBottom: 2,
+  fontWeight: "500",
+},
+
+negotiateButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 4,
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 6,
+  borderWidth: 1,
+  borderColor: "#FF69B4",
+  backgroundColor: "#fff",
+},
+
+negotiateButtonText: {
+  fontSize: 11,
+  color: "#FF69B4",
+  fontWeight: "600",
+},
 })
 
 export default styles

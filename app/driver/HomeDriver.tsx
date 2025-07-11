@@ -29,8 +29,6 @@ interface RideRequest {
   destinationNeighborhood: string
   destinationZone: string
   proposedPrice: number
-  distance: number
-  estimatedTime: number
   passenger: {
     phone: string
     whatsapp: string
@@ -56,8 +54,6 @@ const HomeDriver = () => {
       destinationNeighborhood: "Ciudad Jardín",
       destinationZone: "Sur",
       proposedPrice: 8500,
-      distance: 3.5,
-      estimatedTime: 12,
       passenger: {
         phone: "+57 315 789 4321",
         whatsapp: "+573157894321",
@@ -74,8 +70,6 @@ const HomeDriver = () => {
       destinationNeighborhood: "Terminal",
       destinationZone: "Este",
       proposedPrice: 12000,
-      distance: 5.2,
-      estimatedTime: 18,
       passenger: {
         phone: "+57 300 456 7890",
         whatsapp: "+573004567890",
@@ -92,8 +86,6 @@ const HomeDriver = () => {
       destinationNeighborhood: "Meléndez",
       destinationZone: "Sur",
       proposedPrice: 15000,
-      distance: 8.1,
-      estimatedTime: 25,
       passenger: {
         phone: "+57 312 987 6543",
         whatsapp: "+573129876543",
@@ -142,10 +134,6 @@ const HomeDriver = () => {
     setRideRequests((prev) => prev.filter((request) => request.id !== requestId))
   }
 
-  const updateCityZone = () => {
-    Alert.alert("Actualizar ubicación", "Función para actualizar ciudad y zona de trabajo")
-  }
-
   const fetchUserProfile = async () => {
     const token = await AsyncStorage.getItem("token")
     if (!token) {
@@ -182,7 +170,7 @@ const HomeDriver = () => {
 
   const renderRideRequest = ({ item }: { item: RideRequest }) => (
     <View style={styles.rideRequestCard}>
-      {/* Header con nombre y precio */}
+      {/* Header compacto */}
       <View style={styles.requestHeader}>
         <View style={styles.passengerInfo}>
           <Image source={{ uri: item.passenger.photo }} style={styles.passengerAvatar} />
@@ -190,85 +178,94 @@ const HomeDriver = () => {
         </View>
         <View style={styles.contactActions}>
           <TouchableOpacity style={styles.whatsappButton} onPress={() => openWhatsApp(item.passenger.whatsapp)}>
-            <FontAwesome name="whatsapp" size={20} color="#25D366" />
+            <FontAwesome name="whatsapp" size={16} color="#25D366" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.callButton} onPress={() => callPassenger(item.passenger.phone)}>
-            <FontAwesome name="phone" size={20} color="#FF69B4" />
+            <FontAwesome name="phone" size={16} color="#FF69B4" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Ubicaciones */}
+      {/* Ubicaciones en layout horizontal */}
       <View style={styles.locationsContainer}>
-        <View style={styles.locationRow}>
-          <View style={styles.locationDot} />
-          <View style={styles.locationInfo}>
-            <Text style={styles.locationLabel}>Origen</Text>
-            <Text style={styles.locationAddress}>{item.pickupAddress}</Text>
-            <Text style={styles.locationNeighborhood}>
-              {item.pickupNeighborhood}, {item.pickupZone}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.routeLine} />
-
-        <View style={styles.locationRow}>
-          <View style={[styles.locationDot, styles.destinationDot]} />
-          <View style={styles.locationInfo}>
-            <Text style={styles.locationLabel}>Destino</Text>
-            <Text style={styles.locationAddress}>{item.destinationAddress}</Text>
-            <Text style={styles.locationNeighborhood}>
-              {item.destinationNeighborhood}, {item.destinationZone}
-            </Text>
-          </View>
-        </View>
+  <View style={styles.locationsRow}>
+    {/* Origen */}
+    <View style={styles.locationCompact}>
+      <View style={styles.locationDot} />
+      <View style={styles.locationInfo}>
+        <Text style={styles.locationLabel}>ORIGEN</Text>
+        <Text style={styles.locationAddress} numberOfLines={1}>
+          {item.pickupAddress}
+        </Text>
+        <Text style={styles.locationNeighborhood}>
+          {item.pickupNeighborhood} • {item.pickupZone}
+        </Text>
       </View>
+    </View>
 
-      {/* Información del viaje */}
-      <View style={styles.tripInfo}>
-        <View style={styles.tripInfoItem}>
-          <FontAwesome name="road" size={16} color="#666" />
-          <Text style={styles.tripInfoText}>{item.distance} km</Text>
-        </View>
-        <View style={styles.tripInfoItem}>
-          <FontAwesome name="clock-o" size={16} color="#666" />
-          <Text style={styles.tripInfoText}>{item.estimatedTime} min</Text>
-        </View>
-      </View>
+    {/* Flecha */}
+    <View style={styles.locationArrow}>
+      <FontAwesome name="arrow-right" size={12} color="#ccc" />
+    </View>
 
-      {/* Precio y negociación */}
-      <View style={styles.priceSection}>
-        <Text style={styles.priceLabel}>Precio propuesto:</Text>
-        {editingPrice === item.id ? (
-          <View style={styles.priceEditContainer}>
-            <TextInput
-              style={styles.priceInput}
-              value={counterOfferPrice}
-              onChangeText={setCounterOfferPrice}
-              keyboardType="numeric"
-              placeholder="Ingresa tu precio"
-            />
-            <TouchableOpacity style={styles.submitPriceButton} onPress={() => submitCounterOffer(item.id)}>
-              <Text style={styles.submitPriceText}>Enviar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelPriceButton} onPress={() => setEditingPrice(null)}>
-              <Text style={styles.cancelPriceText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.priceDisplayContainer}>
-            <Text style={styles.priceAmount}>${item.proposedPrice.toLocaleString()}</Text>
-            <TouchableOpacity
-              style={styles.editPriceButton}
-              onPress={() => handlePriceEdit(item.id, item.proposedPrice)}
-            >
-              <FontAwesome name="edit" size={16} color="#FF69B4" />
-              <Text style={styles.editPriceText}>Negociar</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+    {/* Destino */}
+    <View style={styles.locationCompact}>
+      <View style={[styles.locationDot, styles.destinationDot]} />
+      <View style={styles.locationInfo}>
+        <Text style={styles.locationLabel}>DESTINO</Text>
+        <Text style={styles.locationAddress} numberOfLines={1}>
+          {item.destinationAddress}
+        </Text>
+        <Text style={styles.locationNeighborhood}>
+          {item.destinationNeighborhood} • {item.destinationZone}
+        </Text>
       </View>
+    </View>
+  </View>
+</View>
+
+      {/* Info del viaje y precio en una línea */}
+      <View style={styles.priceMainContainer}>
+  <View style={styles.priceLeftSection}>
+    <Text style={styles.priceAmount}>
+      ${item.proposedPrice.toLocaleString()}
+    </Text>
+  </View>
+
+  {/* Botón de negociación o campos de edición */}
+  {editingPrice === item.id ? (
+    <View style={styles.priceEditContainer}>
+      <TextInput
+        style={styles.priceInput}
+        value={counterOfferPrice}
+        onChangeText={setCounterOfferPrice}
+        keyboardType="numeric"
+        placeholder="Precio"
+        autoFocus
+      />
+      <TouchableOpacity 
+        style={styles.submitPriceButton} 
+        onPress={() => submitCounterOffer(item.id)}
+      >
+        <FontAwesome name="check" size={12} color="#fff" />
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.cancelPriceButton} 
+        onPress={() => setEditingPrice(null)}
+      >
+        <FontAwesome name="times" size={12} color="#666" />
+      </TouchableOpacity>
+    </View>
+  ) : (
+    <TouchableOpacity
+      style={styles.negotiateButton}
+      onPress={() => handlePriceEdit(item.id, item.proposedPrice)}
+    >
+      <FontAwesome name="edit" size={12} color="#FF69B4" />
+      <Text style={styles.negotiateButtonText}>Negociar</Text>
+    </TouchableOpacity>
+  )}
+</View>
 
       {/* Botones de acción */}
       <View style={styles.actionButtons}>
@@ -312,17 +309,22 @@ const HomeDriver = () => {
               keyExtractor={(item) => item.id}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.listContainer}
+              // Optimizaciones para mejor rendimiento
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={5}
+              windowSize={10}
+              initialNumToRender={3}
             />
           ) : (
             <View style={styles.emptyState}>
-              <FontAwesome name="car" size={48} color="#ccc" />
+              <FontAwesome name="car" size={40} color="#ccc" />
               <Text style={styles.emptyStateText}>No hay solicitudes disponibles</Text>
               <Text style={styles.emptyStateSubtext}>Mantente activa para recibir nuevas solicitudes</Text>
             </View>
           )
         ) : (
           <View style={styles.inactiveState}>
-            <FontAwesome name="pause-circle" size={48} color="#ccc" />
+            <FontAwesome name="pause-circle" size={40} color="#ccc" />
             <Text style={styles.inactiveStateText}>Estás desconectada</Text>
             <Text style={styles.inactiveStateSubtext}>Activa tu disponibilidad para recibir solicitudes</Text>
           </View>
@@ -346,10 +348,12 @@ const HomeDriver = () => {
           </View>
 
           {/* Botón para actualizar ciudad y zona */}
-          <TouchableOpacity   style={styles.updateLocationButton}   
-          onPress={() => navigateTo("./EditProfileD")}>  
-          <FontAwesome name="map-marker" size={16} color="#FF69B4" />  
-          <Text style={styles.updateLocationText}>Actualizar ciudad y zona de trabajo</Text>
+          <TouchableOpacity   
+            style={styles.updateLocationButton}   
+            onPress={() => navigateTo("./EditProfileD")}
+          >  
+            <FontAwesome name="map-marker" size={14} color="#FF69B4" />  
+            <Text style={styles.updateLocationText}>Actualizar ciudad y zona de trabajo</Text>
           </TouchableOpacity> 
         </View>
       </LinearGradient>
