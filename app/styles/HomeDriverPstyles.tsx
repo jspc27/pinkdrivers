@@ -1,381 +1,427 @@
-import { Dimensions, Platform, StyleSheet } from "react-native";
+import { Dimensions, Platform, StyleSheet } from "react-native"
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window")
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    mapContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
-    map: {
-        flex: 1,
-    },
-    menuButton: {
-        position: "absolute",
-        top: Platform.OS === 'ios' ? 50 : 30,
-        left: 20,
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        padding: 12,
-        borderRadius: 50,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-        zIndex: 6,
-    },
-    sidebar: {
-        position: "absolute",
-        top: 0,
-        left: -300, // Hidden initially
-        width: 280,
-        height: "100%",
-        backgroundColor: "#fff",
-        paddingTop: Platform.OS === 'ios' ? 50 : 30,
-        paddingBottom: 30,
-        paddingHorizontal: 20,
-        borderRightWidth: 0,
-        shadowColor: "#000",
-        shadowOffset: { width: 3, height: 0 },
-        shadowOpacity: 0.27,
-        shadowRadius: 4.65,
-        elevation: 8,
-        zIndex: 10,
-    },
-    closeButton: {
-        position: "absolute",
-        top: Platform.OS === 'ios' ? 50 : 30,
-        right: 15,
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        padding: 10,
-        borderRadius: 50,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        elevation: 4,
-        zIndex: 11,
-    },
-    mapOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.15)',
-        zIndex: 5,
-    },
-    avatarMenuContainer: {
-        position: "absolute",
-        top: Platform.OS === "ios" ? 50 : 30,
-        right: 20,
-        zIndex: 10,
-    },
-    avatarSmall: {
-        width: 50,
-        height: 50,
-        borderRadius: 30,
-        borderWidth: 2,
-        borderColor: "#FFE4F3",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        elevation: 8,
-    },
-    avatarButtonContainer: {
-        shadowColor: "#FFE4F3",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    menuOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9,
-    },
-    
-    // Nuevos estilos para la vista de la conductora
-    driverFooter: {
-        position: "absolute",
-        bottom: 0,
-        width: "100%",
-        backgroundColor: "#FFE4F3",
-        padding: 20,
-        paddingBottom: Platform.OS === 'ios' ? 35 : 25,
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 10,
-        zIndex: 5,
-    },
-    footerContent: {
-        width: "100%",
-        alignItems: "center",
-    },
-    statusContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        width: "100%",
-        marginBottom: 15,
-        backgroundColor: "#fff",
-        padding: 15,
-        borderRadius: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    statusText: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: "#333",
-    },
-    statusSwitch: {
-        transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
-    },
-    driverLocationText: {
-        fontSize: 14,
-        color: "#444",
-        textAlign: "center",
-        marginBottom: 10,
-        paddingHorizontal: 20,
-    },
-    driverStatusInfo: {
-        fontSize: 15,
-        fontWeight: "500",
-        textAlign: "center",
-    },
-    
-   
-    
-   // Estilos para el nuevo diseño de solicitud
-rideRequestContainer: {
-  position: 'absolute',
-  bottom: 200,
-  left: 20,
-  right: 20,
-  backgroundColor: '#fff',
-  borderRadius: 16,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.15,
-  shadowRadius: 12,
-  elevation: 6,
-},
-rideRequestHeader: {
-        marginBottom: 12,
-    },
+  container: {
+    flex: 1,
+  },
 
-headerTop: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  paddingHorizontal: 20,
-  paddingVertical: 12, // Cambiar de 16 a 12
-  borderBottomWidth: 1,
-  borderBottomColor: '#f0f0f0',
-},
+  // Header styles
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingBottom: 15,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
 
-rideRequestTitle: {
-  fontSize: 18,
-  fontWeight: '600',
-  color: '#333',
-},
+  avatarSmall: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: "#FFE4F3",
+  },
 
-priceContainer: {
-  alignItems: 'flex-end',
-},
+  headerInfo: {
+    flex: 1,
+    marginLeft: 15,
+  },
 
-//precio
-priceAmount: {
-  fontSize: 30,
-  fontWeight: 'bold',
-  color: '#ff69B4',
-},
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+  },
 
-priceLabel: {
-  fontSize: 12,
-  color: '#666',
-  marginTop: -2,
-},
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
 
-passengerSection: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  paddingHorizontal: 20,
-  paddingVertical: 12, // Cambiar de 16 a 12
-  borderBottomWidth: 1,
-  borderBottomColor: '#f0f0f0',
-},
+  statusIndicator: {
+    alignItems: "center",
+  },
 
-passengerInfo: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  flex: 1,
-},
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
 
-passengerAvatar: {
-  width: 44,
-  height: 44,
-  borderRadius: 22,
-  marginRight: 12,
-},
+  // Requests list styles
+  requestsList: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
 
-passengerName: {
-  fontSize: 16,
-  fontWeight: '500',
-  color: '#333',
-},
+  listContainer: {
+    paddingBottom: 20,
+  },
 
-contactActions: {
-  flexDirection: 'row',
-  gap: 12,
-},
+  // TARJETA OPTIMIZADA - MÁS COMPACTA
+  rideRequestCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12, // Reducido de 16 a 12
+    marginBottom: 10, // Reducido de 16 a 10
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 }, // Reducido de 2 a 1
+    shadowOpacity: 0.08, // Reducido de 0.1 a 0.08
+    shadowRadius: 4, // Reducido de 8 a 4
+    elevation: 3, // Reducido de 4 a 3
+  },
 
-whatsappButton: {
-  padding: 8,
-  borderRadius: 20,
-  backgroundColor: '#f8f8f8',
-},
+  // HEADER MÁS COMPACTO
+  requestHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 10, // Reducido de 16 a 10
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
 
-callButton: {
-  padding: 8,
-  borderRadius: 20,
-  backgroundColor: '#f8f8f8',
-},
+  passengerInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
 
-routeSection: {
-  paddingHorizontal: 20,
-  paddingVertical: 12, // Cambiar de 16 a 12
-  borderBottomWidth: 1,
-  borderBottomColor: '#f0f0f0',
-},
+  // AVATAR MÁS PEQUEÑO
+  passengerAvatar: {
+    width: 32, // Reducido de 40 a 32
+    height: 32, // Reducido de 40 a 32
+    borderRadius: 16, // Reducido de 20 a 16
+    marginRight: 8, // Reducido de 12 a 8
+  },
 
-routeContainer: {
-  flexDirection: 'row',
-  alignItems: 'flex-start',
-},
+  // NOMBRE MÁS PEQUEÑO
+  passengerName: {
+    fontSize: 14, // Reducido de 16 a 14
+    fontWeight: "600",
+    color: "#333",
+  },
 
-routeIndicator: {
-  alignItems: 'center',
-  marginRight: 16,
-  paddingTop: 8,
-},
+  // BOTONES DE CONTACTO MÁS PEQUEÑOS
+  contactActions: {
+    flexDirection: "row",
+    gap: 6, // Reducido de 10 a 6
+  },
 
-pickupDot: {
-  width: 12,
-  height: 12,
-  borderRadius: 6,
-  backgroundColor: '#4CAF50',
-},
+  whatsappButton: {
+    padding: 6, // Reducido de 8 a 6
+    borderRadius: 16, // Reducido de 20 a 16
+    backgroundColor: "#f8f8f8",
+  },
 
-routeLine: {
-  width: 2,
-  height: 30, // Cambiar de 40 a 30
-  backgroundColor: '#ddd',
-  marginVertical: 4,
-},
+  callButton: {
+    padding: 6, // Reducido de 8 a 6
+    borderRadius: 16, // Reducido de 20 a 16
+    backgroundColor: "#f8f8f8",
+  },
 
+  // UBICACIONES MÁS COMPACTAS
+  locationsContainer: {
+    padding: 10, // Reducido de 16 a 10
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
 
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 2, // Agregado para reducir espacio
+  },
 
-destinationDot: {
-  width: 12,
-  height: 12,
-  borderRadius: 6,
-  backgroundColor: '#ff69B4',
-},
+  // PUNTOS DE UBICACIÓN MÁS PEQUEÑOS
+  locationDot: {
+    width: 8, // Reducido de 12 a 8
+    height: 8, // Reducido de 12 a 8
+    borderRadius: 4, // Reducido de 6 a 4
+    backgroundColor: "#4CAF50",
+    marginTop: 6, // Reducido de 8 a 6
+    marginRight: 8, // Reducido de 12 a 8
+  },
 
-locationTexts: {
-  flex: 1,
-},
+  destinationDot: {
+    backgroundColor: "#FF69B4",
+  },
 
-locationItem: {
-  marginBottom: 14, // Cambiar de 20 a 14
-},
+  // LÍNEA DE RUTA MÁS CORTA
+  routeLine: {
+    width: 2,
+    height: 14, // Reducido de 20 a 14
+    backgroundColor: "#ddd",
+    marginLeft: 3, // Reducido de 5 a 3
+    marginVertical: 4, // Reducido de 8 a 4
+  },
 
-locationLabel: {
-  fontSize: 12,
-  color: '#666',
-  marginBottom: 4,
-},
+  locationInfo: {
+    flex: 1,
+  },
 
-locationAddress: {
-  fontSize: 14,
-  color: '#333',
-  fontWeight: '400',
-},
+  locationLabel: {
+    fontSize: 10, // Reducido de 12 a 10
+    color: "#666",
+    marginBottom: 2, // Reducido de 4 a 2
+  },
 
-tripInfoSection: {
-  flexDirection: 'row',
-  paddingHorizontal: 20,
-  paddingVertical: 10, // Cambiar de 12 a 10
-  gap: 24,
-},
+  // DIRECCIONES MÁS PEQUEÑAS
+  locationAddress: {
+    fontSize: 12, // Reducido de 14 a 12
+    fontWeight: "500",
+    color: "#333",
+    marginBottom: 1, // Reducido de 2 a 1
+  },
 
-tripInfoItem: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 6,
-},
+  locationNeighborhood: {
+    fontSize: 10, // Reducido de 12 a 10
+    color: "#888",
+  },
 
-tripInfoText: {
-  fontSize: 14,
-  color: '#666',
-},
+  // INFORMACIÓN DEL VIAJE MÁS COMPACTA
+  tripInfo: {
+    flexDirection: "row",
+    paddingHorizontal: 10, // Reducido de 16 a 10
+    paddingVertical: 8, // Reducido de 12 a 8
+    gap: 16, // Reducido de 20 a 16
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
 
-actionButtonsContainer: {
-  flexDirection: 'row',
-  paddingHorizontal: 20,
-  paddingVertical: 12, // Cambiar de 16 a 12
-  gap: 12,
-},
+  tripInfoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4, // Reducido de 6 a 4
+  },
 
-declineButton: {
-  flex: 1,
-  paddingVertical: 12, // Cambiar de 14 a 12
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: '#ddd',
-  alignItems: 'center',
-},
+  tripInfoText: {
+    fontSize: 12, // Reducido de 14 a 12
+    color: "#666",
+  },
 
-declineButtonText: {
-  fontSize: 16,
-  fontWeight: '500',
-  color: '#666',
-},
+  // SECCIÓN DE PRECIO MÁS COMPACTA
+  priceSection: {
+    padding: 10, // Reducido de 16 a 10
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
 
-acceptButton: {
-  flex: 1,
-  paddingVertical: 12, // Cambiar de 14 a 12
-  borderRadius: 8,
-  backgroundColor: '#ff69B4',
-  alignItems: 'center',
-},
+  priceLabel: {
+    fontSize: 12, // Reducido de 14 a 12
+    color: "#666",
+    marginBottom: 6, // Reducido de 8 a 6
+  },
 
-acceptButtonText: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: '#fff',
-},
-});
+  priceDisplayContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
 
-export default styles;
+  // PRECIO MÁS PEQUEÑO
+  priceAmount: {
+    fontSize: 20, // Reducido de 24 a 20
+    fontWeight: "bold",
+    color: "#FF69B4",
+  },
+
+  // BOTÓN DE EDITAR PRECIO MÁS PEQUEÑO
+  editPriceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4, // Reducido de 6 a 4
+    paddingHorizontal: 8, // Reducido de 12 a 8
+    paddingVertical: 4, // Reducido de 6 a 4
+    borderRadius: 6, // Reducido de 8 a 6
+    borderWidth: 1,
+    borderColor: "#FF69B4",
+  },
+
+  editPriceText: {
+    fontSize: 12, // Reducido de 14 a 12
+    color: "#FF69B4",
+    fontWeight: "500",
+  },
+
+  priceEditContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6, // Reducido de 8 a 6
+  },
+
+  priceInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 6, // Reducido de 8 a 6
+    paddingHorizontal: 8, // Reducido de 12 a 8
+    paddingVertical: 6, // Reducido de 8 a 6
+    fontSize: 14, // Reducido de 16 a 14
+  },
+
+  submitPriceButton: {
+    backgroundColor: "#FF69B4",
+    paddingHorizontal: 12, // Reducido de 16 a 12
+    paddingVertical: 6, // Reducido de 8 a 6
+    borderRadius: 6, // Reducido de 8 a 6
+  },
+
+  submitPriceText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 12, // Agregado tamaño más pequeño
+  },
+
+  cancelPriceButton: {
+    paddingHorizontal: 8, // Reducido de 12 a 8
+    paddingVertical: 6, // Reducido de 8 a 6
+  },
+
+  cancelPriceText: {
+    color: "#666",
+    fontSize: 12, // Agregado tamaño más pequeño
+  },
+
+  // BOTONES DE ACCIÓN MÁS COMPACTOS
+  actionButtons: {
+    flexDirection: "row",
+    padding: 10, // Reducido de 16 a 10
+    gap: 8, // Reducido de 12 a 8
+  },
+
+  rejectButton: {
+    flex: 1,
+    paddingVertical: 8, // Reducido de 12 a 8
+    borderRadius: 6, // Reducido de 8 a 6
+    borderWidth: 1,
+    borderColor: "#ddd",
+    alignItems: "center",
+  },
+
+  rejectButtonText: {
+    fontSize: 14, // Reducido de 16 a 14
+    fontWeight: "500",
+    color: "#666",
+  },
+
+  acceptButton: {
+    flex: 1,
+    paddingVertical: 8, // Reducido de 12 a 8
+    borderRadius: 6, // Reducido de 8 a 6
+    backgroundColor: "#FF69B4",
+    alignItems: "center",
+  },
+
+  acceptButtonText: {
+    fontSize: 14, // Reducido de 16 a 14
+    fontWeight: "600",
+    color: "#fff",
+  },
+
+  // Empty states
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 16,
+    textAlign: "center",
+  },
+
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: "#888",
+    marginTop: 8,
+    textAlign: "center",
+  },
+
+  inactiveState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+
+  inactiveStateText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 16,
+    textAlign: "center",
+  },
+
+  inactiveStateSubtext: {
+    fontSize: 14,
+    color: "#888",
+    marginTop: 8,
+    textAlign: "center",
+  },
+
+  // Footer styles
+  footer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    paddingBottom: Platform.OS === "ios" ? 35 : 25,
+  },
+
+  footerContent: {
+    gap: 16,
+  },
+
+  statusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+
+  statusText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  statusSwitch: {
+    transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
+  },
+
+  updateLocationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+
+  updateLocationText: {
+    fontSize: 14,
+    color: "#FF69B4",
+    fontWeight: "500",
+  },
+})
+
+export default styles

@@ -1,270 +1,338 @@
-import { FontAwesome } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Location from "expo-location";
-import { ExternalPathString, RelativePathString, router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+"use client"
+
+import { FontAwesome } from "@expo/vector-icons"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { LinearGradient } from "expo-linear-gradient"
+import { type ExternalPathString, type RelativePathString, router, useFocusEffect } from "expo-router"
+import { useCallback, useState } from "react"
 import {
   Alert,
-  Animated,
+  FlatList,
   Image,
   Linking,
   StatusBar,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
-  View
-} from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
-import styles from "../styles/HomeDriverPstyles";
+  View,
+} from "react-native"
+import styles from "../styles/HomeDriverPstyles"
+
+interface RideRequest {
+  id: string
+  passengerName: string
+  pickupAddress: string
+  pickupNeighborhood: string
+  pickupZone: string
+  destinationAddress: string
+  destinationNeighborhood: string
+  destinationZone: string
+  proposedPrice: number
+  distance: number
+  estimatedTime: number
+  passenger: {
+    phone: string
+    whatsapp: string
+    photo: string
+  }
+}
 
 const HomeDriver = () => {
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [ubicacion, setUbicacion] = useState("");
-  const [isDriverActive, setIsDriverActive] = useState(false);
-  const [showRideRequest, setShowRideRequest] = useState(false);
-  const [region, setRegion] = useState({
-    latitude: 3.4516,
-    longitude: -76.5319,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
+  const [isDriverActive, setIsDriverActive] = useState(false)
+  const [currentCity, setCurrentCity] = useState("Cali")
+  const [currentZone, setCurrentZone] = useState("Norte")
+  const [editingPrice, setEditingPrice] = useState<string | null>(null)
+  const [counterOfferPrice, setCounterOfferPrice] = useState("")
 
-  const [rideRequest, setRideRequest] = useState({
-  pickupLocation: "Av. Circunvalar #9-42, Belen, Cali, Valle del Cauca",
-  destination: "Centro Comercial Palmetto",
-  distance: 3.5,
-  estimatedTime: 12,
-  price: 8500, // Nuevo campo para el precio
-  passenger: {
-    name: "Carolina Gómez",
-    phone: "+57 315 789 4321",
-    whatsapp: "+573157894321",
-    photo: "https://i.pravatar.cc/150?img=23",
-    latitude: 3.4409,
-    longitude: -76.5225,
-  },
-});
+  const [rideRequests, setRideRequests] = useState<RideRequest[]>([
+    {
+      id: "1",
+      passengerName: "Carolina",
+      pickupAddress: "Av. Circunvalar #9-42",
+      pickupNeighborhood: "Belén",
+      pickupZone: "Norte",
+      destinationAddress: "Centro Comercial Palmetto",
+      destinationNeighborhood: "Ciudad Jardín",
+      destinationZone: "Sur",
+      proposedPrice: 8500,
+      distance: 3.5,
+      estimatedTime: 12,
+      passenger: {
+        phone: "+57 315 789 4321",
+        whatsapp: "+573157894321",
+        photo: "https://i.pravatar.cc/150?img=23",
+      },
+    },
+    {
+      id: "2",
+      passengerName: "María",
+      pickupAddress: "Calle 5 #38-25",
+      pickupNeighborhood: "San Fernando",
+      pickupZone: "Centro",
+      destinationAddress: "Terminal de Transporte",
+      destinationNeighborhood: "Terminal",
+      destinationZone: "Este",
+      proposedPrice: 12000,
+      distance: 5.2,
+      estimatedTime: 18,
+      passenger: {
+        phone: "+57 300 456 7890",
+        whatsapp: "+573004567890",
+        photo: "https://i.pravatar.cc/150?img=44",
+      },
+    },
+    {
+      id: "3",
+      passengerName: "Andrea",
+      pickupAddress: "Av. 6N #23-45",
+      pickupNeighborhood: "Versalles",
+      pickupZone: "Norte",
+      destinationAddress: "Universidad del Valle",
+      destinationNeighborhood: "Meléndez",
+      destinationZone: "Sur",
+      proposedPrice: 15000,
+      distance: 8.1,
+      estimatedTime: 25,
+      passenger: {
+        phone: "+57 312 987 6543",
+        whatsapp: "+573129876543",
+        photo: "https://i.pravatar.cc/150?img=32",
+      },
+    },
+  ])
 
-  const [routeToPickup, setRouteToPickup] = useState<{ latitude: number; longitude: number }[]>([]);
+  const navigateTo = (screen: RelativePathString | ExternalPathString) => {
+    router.push(screen)
+  }
 
-  const fetchRouteToPickup = async () => {
-    const origin = `${region.latitude},${region.longitude}`;
-    const destination = `${rideRequest.passenger.latitude},${rideRequest.passenger.longitude}`;
-    const apiKey = "AIzaSyBz9w_gTpme9AMOMzJtRk3AYDO1-JlMKEA";
+  const toggleDriverActive = () => setIsDriverActive(!isDriverActive)
+
+  const openWhatsApp = (whatsapp: string) => {
+    Linking.openURL(`whatsapp://send?phone=${whatsapp}`).catch(() => Alert.alert("Error", "No se pudo abrir WhatsApp."))
+  }
+
+  const callPassenger = (phone: string) => {
+    Linking.openURL(`tel:${phone.replace(/\s/g, "")}`)
+  }
+
+  const handlePriceEdit = (requestId: string, currentPrice: number) => {
+    setEditingPrice(requestId)
+    setCounterOfferPrice(currentPrice.toString())
+  }
+
+  const submitCounterOffer = (requestId: string) => {
+    const newPrice = Number.parseInt(counterOfferPrice)
+    if (newPrice && newPrice > 0) {
+      setRideRequests((prev) =>
+        prev.map((request) => (request.id === requestId ? { ...request, proposedPrice: newPrice } : request)),
+      )
+      Alert.alert("Contrapropuesta enviada", `Has propuesto $${newPrice.toLocaleString()} COP`)
+    }
+    setEditingPrice(null)
+    setCounterOfferPrice("")
+  }
+
+  const acceptRide = (requestId: string) => {
+    Alert.alert("Viaje aceptado", "Has aceptado la solicitud de viaje")
+    setRideRequests((prev) => prev.filter((request) => request.id !== requestId))
+  }
+
+  const rejectRide = (requestId: string) => {
+    setRideRequests((prev) => prev.filter((request) => request.id !== requestId))
+  }
+
+  const updateCityZone = () => {
+    Alert.alert("Actualizar ubicación", "Función para actualizar ciudad y zona de trabajo")
+  }
+
+  const fetchUserProfile = async () => {
+    const token = await AsyncStorage.getItem("token")
+    if (!token) {
+      console.log("No se encontró el token.")
+      return
+    }
 
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&key=${apiKey}`
-      );
-      const data = await response.json();
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
-      if (data.routes.length > 0) {
-        const points = data.routes[0].overview_polyline.points;
-        const coordinates = decodePolyline(points);
-        setRouteToPickup(coordinates);
+      const data = await response.json()
+
+      if (response.ok) {
+        setCurrentCity(data.ciudad || "")
+        setCurrentZone(data.zona || "")
+      } else {
+        console.log("Error al cargar perfil:", data.message)
       }
     } catch (error) {
-      console.error("Error al obtener la ruta:", error);
+      console.error("Error al conectar con el servidor:", error)
     }
-  };
+  }
 
-  const decodePolyline = (t: string, e = 5) => {
-    let points = [];
-    let index = 0, lat = 0, lng = 0;
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserProfile()
+    }, []),
+  )
 
-    while (index < t.length) {
-      let b, shift = 0, result = 0;
-      do {
-        b = t.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      const dlat = (result & 1) ? ~(result >> 1) : result >> 1;
-      lat += dlat;
+  const renderRideRequest = ({ item }: { item: RideRequest }) => (
+    <View style={styles.rideRequestCard}>
+      {/* Header con nombre y precio */}
+      <View style={styles.requestHeader}>
+        <View style={styles.passengerInfo}>
+          <Image source={{ uri: item.passenger.photo }} style={styles.passengerAvatar} />
+          <Text style={styles.passengerName}>{item.passengerName}</Text>
+        </View>
+        <View style={styles.contactActions}>
+          <TouchableOpacity style={styles.whatsappButton} onPress={() => openWhatsApp(item.passenger.whatsapp)}>
+            <FontAwesome name="whatsapp" size={20} color="#25D366" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.callButton} onPress={() => callPassenger(item.passenger.phone)}>
+            <FontAwesome name="phone" size={20} color="#FF69B4" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      shift = 0; result = 0;
-      do {
-        b = t.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      const dlng = (result & 1) ? ~(result >> 1) : result >> 1;
-      lng += dlng;
+      {/* Ubicaciones */}
+      <View style={styles.locationsContainer}>
+        <View style={styles.locationRow}>
+          <View style={styles.locationDot} />
+          <View style={styles.locationInfo}>
+            <Text style={styles.locationLabel}>Origen</Text>
+            <Text style={styles.locationAddress}>{item.pickupAddress}</Text>
+            <Text style={styles.locationNeighborhood}>
+              {item.pickupNeighborhood}, {item.pickupZone}
+            </Text>
+          </View>
+        </View>
 
-      points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
-    }
-    return points;
-  };
+        <View style={styles.routeLine} />
 
-  const menuAnimation = useRef(new Animated.Value(0)).current;
-  const rideRequestAnimation = useRef(new Animated.Value(0)).current;
+        <View style={styles.locationRow}>
+          <View style={[styles.locationDot, styles.destinationDot]} />
+          <View style={styles.locationInfo}>
+            <Text style={styles.locationLabel}>Destino</Text>
+            <Text style={styles.locationAddress}>{item.destinationAddress}</Text>
+            <Text style={styles.locationNeighborhood}>
+              {item.destinationNeighborhood}, {item.destinationZone}
+            </Text>
+          </View>
+        </View>
+      </View>
 
-  useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permiso denegado", "No se pudo acceder a la ubicación");
-        return;
-      }
-      Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, timeInterval: 200000, distanceInterval: 50 },
-        (location) => {
-          const { latitude, longitude } = location.coords;
-          setRegion((prev) => ({ ...prev, latitude, longitude }));
-        }
-      );
-    })();
-  }, []);
+      {/* Información del viaje */}
+      <View style={styles.tripInfo}>
+        <View style={styles.tripInfoItem}>
+          <FontAwesome name="road" size={16} color="#666" />
+          <Text style={styles.tripInfoText}>{item.distance} km</Text>
+        </View>
+        <View style={styles.tripInfoItem}>
+          <FontAwesome name="clock-o" size={16} color="#666" />
+          <Text style={styles.tripInfoText}>{item.estimatedTime} min</Text>
+        </View>
+      </View>
 
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>;
-    if (isDriverActive) {
-      timeout = setTimeout(() => setShowRideRequest(true), 3000);
-    } else {
-      setShowRideRequest(false);
-    }
-    return () => clearTimeout(timeout);
-  }, [isDriverActive]);
+      {/* Precio y negociación */}
+      <View style={styles.priceSection}>
+        <Text style={styles.priceLabel}>Precio propuesto:</Text>
+        {editingPrice === item.id ? (
+          <View style={styles.priceEditContainer}>
+            <TextInput
+              style={styles.priceInput}
+              value={counterOfferPrice}
+              onChangeText={setCounterOfferPrice}
+              keyboardType="numeric"
+              placeholder="Ingresa tu precio"
+            />
+            <TouchableOpacity style={styles.submitPriceButton} onPress={() => submitCounterOffer(item.id)}>
+              <Text style={styles.submitPriceText}>Enviar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelPriceButton} onPress={() => setEditingPrice(null)}>
+              <Text style={styles.cancelPriceText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.priceDisplayContainer}>
+            <Text style={styles.priceAmount}>${item.proposedPrice.toLocaleString()}</Text>
+            <TouchableOpacity
+              style={styles.editPriceButton}
+              onPress={() => handlePriceEdit(item.id, item.proposedPrice)}
+            >
+              <FontAwesome name="edit" size={16} color="#FF69B4" />
+              <Text style={styles.editPriceText}>Negociar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
-  useEffect(() => {
-    Animated.timing(menuAnimation, {
-      toValue: menuVisible ? 1 : 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
-    Animated.timing(rideRequestAnimation, {
-      toValue: showRideRequest ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [menuVisible, showRideRequest]);
-
-  const toggleMenu = () => setMenuVisible(!menuVisible);
-  const closeMenu = () => setMenuVisible(false);
-  const navigateTo = (screen: RelativePathString | ExternalPathString) => {
-    closeMenu();
-    router.push(screen);
-  };
-  const toggleDriverActive = () => setIsDriverActive(!isDriverActive);
-
-  useEffect(() => { if (!showRideRequest && isDriverActive) fetchRouteToPickup(); }, [showRideRequest, isDriverActive]);
-
-  const handleAcceptRide = () => {
-    setShowRideRequest(false);
-    fetchRouteToPickup();
-  };
-  const handleRejectRide = () => setShowRideRequest(false);
-
-  const openWhatsApp = () => {
-    Linking.openURL(`whatsapp://send?phone=${rideRequest.passenger.whatsapp}`).catch(() =>
-      Alert.alert("Error", "No se pudo abrir WhatsApp.")
-    );
-  };
-  const callPassenger = () => {
-    Linking.openURL(`tel:${rideRequest.passenger.phone.replace(/\s/g, '')}`);
-  };
-
-  const menuOpacity = menuAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-  const menuTranslateY = menuAnimation.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] });
-  const rideRequestTranslateY = rideRequestAnimation.interpolate({ inputRange: [0, 1], outputRange: [200, 0] });
-  const rideRequestOpacity = rideRequestAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+      {/* Botones de acción */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.rejectButton} onPress={() => rejectRide(item.id)}>
+          <Text style={styles.rejectButtonText}>Rechazar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.acceptButton} onPress={() => acceptRide(item.id)}>
+          <Text style={styles.acceptButtonText}>Aceptar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
 
   return (
-    <LinearGradient colors={['#FFE4F3', '#FFC1E3']} style={styles.container}>
+    <LinearGradient colors={["#FFE4F3", "#FFC1E3"]} style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFE4F3" />
 
-      <View style={styles.mapContainer}>
-        <MapView provider={PROVIDER_GOOGLE} style={styles.map} region={region}>
-          <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} title="Tú (conductora)" pinColor="red" />
-          <Marker coordinate={{ latitude: rideRequest.passenger.latitude, longitude: rideRequest.passenger.longitude }} title="Pasajera" pinColor="green" />
-          {routeToPickup.length > 0 && <Polyline coordinates={routeToPickup} strokeColor="#FF69B4" strokeWidth={4} />}
-        </MapView>
-      </View>
-
-      {menuVisible && <TouchableOpacity style={styles.menuOverlay} onPress={closeMenu} activeOpacity={1} />}
-
-      <View style={styles.avatarMenuContainer}>
-        <TouchableOpacity onPress={() => navigateTo("./ProfileP")} style={styles.avatarButtonContainer} activeOpacity={0.8}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigateTo("./ProfileD")}>
           <Image source={{ uri: "https://i.pravatar.cc/150?img=47" }} style={styles.avatarSmall} />
         </TouchableOpacity>
-      </View>
-
-      {showRideRequest && (
-  <Animated.View style={[styles.rideRequestContainer, { opacity: rideRequestOpacity, transform: [{ translateY: rideRequestTranslateY }] }]}>
-    {/* Header con precio destacado */}
-    <View style={styles.rideRequestHeader}>
-      <View style={styles.headerTop}>
-        <Text style={styles.rideRequestTitle}>Nueva solicitud</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceAmount}>${rideRequest.price.toLocaleString()}</Text>
-          <Text style={styles.priceLabel}>COP</Text>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle}>Solicitudes de viaje</Text>
+          <Text style={styles.headerSubtitle}>
+            {currentCity} - {currentZone}
+          </Text>
+        </View>
+        <View style={styles.statusIndicator}>
+          <View style={[styles.statusDot, { backgroundColor: isDriverActive ? "#4CAF50" : "#FF5722" }]} />
         </View>
       </View>
-    </View>
 
-    {/* Información del pasajero */}
-    <View style={styles.passengerSection}>
-      <View style={styles.passengerInfo}>
-        <Image source={{ uri: rideRequest.passenger.photo }} style={styles.passengerAvatar} />
-        <Text style={styles.passengerName}>{rideRequest.passenger.name}</Text>
-      </View>
-      <View style={styles.contactActions}>
-        <TouchableOpacity style={styles.whatsappButton} onPress={openWhatsApp}>
-          <FontAwesome name="whatsapp" size={20} color="#25D366" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callButton} onPress={callPassenger}>
-          <FontAwesome name="phone" size={20} color="#FF69B4" />
-        </TouchableOpacity>
-      </View>
-    </View>
-
-    {/* Ruta del viaje */}
-    <View style={styles.routeSection}>
-      <View style={styles.routeContainer}>
-        <View style={styles.routeIndicator}>
-          <View style={styles.pickupDot} />
-          <View style={styles.routeLine} />
-          <View style={styles.destinationDot} />
-        </View>
-        <View style={styles.locationTexts}>
-          <View style={styles.locationItem}>
-            <Text style={styles.locationLabel}>Recoger en</Text>
-            <Text style={styles.locationAddress}>{rideRequest.pickupLocation}</Text>
+      {/* Lista de solicitudes */}
+      <View style={styles.requestsList}>
+        {isDriverActive ? (
+          rideRequests.length > 0 ? (
+            <FlatList
+              data={rideRequests}
+              renderItem={renderRideRequest}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContainer}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <FontAwesome name="car" size={48} color="#ccc" />
+              <Text style={styles.emptyStateText}>No hay solicitudes disponibles</Text>
+              <Text style={styles.emptyStateSubtext}>Mantente activa para recibir nuevas solicitudes</Text>
+            </View>
+          )
+        ) : (
+          <View style={styles.inactiveState}>
+            <FontAwesome name="pause-circle" size={48} color="#ccc" />
+            <Text style={styles.inactiveStateText}>Estás desconectada</Text>
+            <Text style={styles.inactiveStateSubtext}>Activa tu disponibilidad para recibir solicitudes</Text>
           </View>
-          <View style={styles.locationItem}>
-            <Text style={styles.locationLabel}>Destino</Text>
-            <Text style={styles.locationAddress}>{rideRequest.destination}</Text>
-          </View>
-        </View>
+        )}
       </View>
-    </View>
 
-    {/* Información del viaje */}
-    <View style={styles.tripInfoSection}>
-      <View style={styles.tripInfoItem}>
-        <FontAwesome name="road" size={16} color="#666" />
-        <Text style={styles.tripInfoText}>{rideRequest.distance} km</Text>
-      </View>
-      <View style={styles.tripInfoItem}>
-        <FontAwesome name="clock-o" size={16} color="#666" />
-        <Text style={styles.tripInfoText}>{rideRequest.estimatedTime} min</Text>
-      </View>
-    </View>
-
-    {/* Botones de acción */}
-    <View style={styles.actionButtonsContainer}>
-      <TouchableOpacity style={styles.declineButton} onPress={handleRejectRide}>
-        <Text style={styles.declineButtonText}>Rechazar</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptRide}>
-        <Text style={styles.acceptButtonText}>Aceptar</Text>
-      </TouchableOpacity>
-    </View>
-  </Animated.View>
-)}
-
-      <LinearGradient colors={['#FFE4F3', '#FFC1E3']} style={styles.driverFooter}>
+      {/* Footer con controles */}
+      <LinearGradient colors={["#FFE4F3", "#FFC1E3"]} style={styles.footer}>
         <View style={styles.footerContent}>
+          {/* Switch de disponibilidad */}
           <View style={styles.statusContainer}>
             <Text style={styles.statusText}>{isDriverActive ? "Disponible" : "No disponible"}</Text>
             <Switch
@@ -277,14 +345,16 @@ const HomeDriver = () => {
             />
           </View>
 
-          <Text style={styles.driverLocationText}>Tu ubicación actual: {ubicacion}</Text>
-          <Text style={[styles.driverStatusInfo, { color: isDriverActive ? "#FF69B4" : "#757575" }]}>
-            {isDriverActive ? "Esperando solicitudes de viaje..." : "Activa tu disponibilidad para recibir viajes"}
-          </Text>
+          {/* Botón para actualizar ciudad y zona */}
+          <TouchableOpacity   style={styles.updateLocationButton}   
+          onPress={() => navigateTo("./EditProfileD")}>  
+          <FontAwesome name="map-marker" size={16} color="#FF69B4" />  
+          <Text style={styles.updateLocationText}>Actualizar ciudad y zona de trabajo</Text>
+          </TouchableOpacity> 
         </View>
       </LinearGradient>
     </LinearGradient>
-  );
-};
+  )
+}
 
-export default HomeDriver;
+export default HomeDriver
