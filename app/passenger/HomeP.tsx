@@ -1,12 +1,14 @@
 "use client"
 
 import { FontAwesome, FontAwesome5 } from "@expo/vector-icons"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LinearGradient } from "expo-linear-gradient"
 import * as Location from "expo-location"
 import { router } from "expo-router"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   BackHandler,
@@ -21,7 +23,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from "react-native"
 import MapView, { Marker, Polyline } from "react-native-maps"
 import styles from "../styles/HomePstyles"
@@ -66,7 +67,7 @@ const HomeP = () => {
   const overlayAnimation = useRef(new Animated.Value(0)).current
   const scrollViewRef = useRef<ScrollView>(null)
 
-  // Referencias para los campos del formulario - AGREGADAS LAS DE UBICACIÓN ACTUAL
+  // Referencias para los campos del formulario
   const ubicacionActualRef = useRef<TextInput>(null)
   const barrioActualRef = useRef<TextInput>(null)
   const zonaActualRef = useRef<TextInput>(null)
@@ -76,6 +77,28 @@ const HomeP = () => {
   const destinoZonaRef = useRef<TextInput>(null)
   const referenciaRef = useRef<TextInput>(null)
   const precioRef = useRef<TextInput>(null)
+
+  // Estado para el usuario logueado
+  const [usuarioId, setUsuarioId] = useState<number | null>(null)
+  const [usuarioData, setUsuarioData] = useState<any>(null)
+
+  // Función para decodificar JWT (simple, sin librerías externas)
+  const decodeJWT = (token: string) => {
+    try {
+      const base64Url = token.split(".")[1]
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join(""),
+      )
+      return JSON.parse(jsonPayload)
+    } catch (error) {
+      console.error("Error decodificando JWT:", error)
+      return null
+    }
+  }
 
   // Función para determinar la zona basada en coordenadas
   const determinarZona = (latitude: number, longitude: number) => {
@@ -217,6 +240,62 @@ const HomeP = () => {
     }
   }, [isModalVisible])
 
+  // Obtener datos del usuario desde el token
+  useEffect(() => {
+    const obtenerUsuario = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token")
+
+        if (!token) {
+          console.warn("No se encontró el token")
+          // Redirigir al login si no hay token
+          router.push("/passenger/LoginP")
+          return
+        }
+
+        // Método 1: Decodificar el JWT directamente (más rápido)
+        const decodedToken = decodeJWT(token)
+        if (decodedToken && decodedToken.id) {
+          setUsuarioId(decodedToken.id)
+          setUsuarioData(decodedToken)
+          console.log("✅ Usuario obtenido del token:", decodedToken)
+          return
+        }
+
+        // Método 2: Hacer petición al servidor (fallback)
+        const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data && data.id) {
+            setUsuarioId(data.id)
+            setUsuarioData(data)
+            console.log("✅ Usuario obtenido del servidor:", data)
+          } else {
+            console.warn("No se pudo obtener el ID del usuario del servidor")
+          }
+        } else {
+          console.warn("Error al obtener usuario del servidor:", response.status)
+          // Si el token es inválido, redirigir al login
+          if (response.status === 401) {
+            await AsyncStorage.removeItem("token")
+            router.push("/passenger/LoginP")
+          }
+        }
+      } catch (error) {
+        console.error("Error al obtener el usuario:", error)
+      }
+    }
+
+    obtenerUsuario()
+  }, [])
+
   const toggleMenu = () => {
     setMenuVisible(!menuVisible)
   }
@@ -251,7 +330,7 @@ const HomeP = () => {
     setSelectedVehicle(vehicleType)
   }
 
-  // ACTUALIZADA - Ahora incluye los campos de ubicación actual
+  // Validación del formulario
   const isFormComplete = () => {
     return (
       ubicacionActual &&
@@ -263,7 +342,8 @@ const HomeP = () => {
       destinoZona &&
       puntoReferencia &&
       selectedVehicle &&
-      valorPersonalizado
+      valorPersonalizado &&
+      usuarioId // ✅ Validar que tengamos el ID del usuario
     )
   }
 
@@ -282,6 +362,13 @@ const HomeP = () => {
   }
 
   const handleConfirmarViaje = async () => {
+    // Validar que tengamos el ID del usuario
+    if (!usuarioId) {
+      Alert.alert("Error de sesión", "No se pudo identificar al usuario. Por favor, inicia sesión nuevamente.")
+      router.push("/passenger/LoginP")
+      return
+    }
+
     if (!isFormComplete()) {
       Alert.alert("Formulario incompleto", "Por favor completa todos los campos")
       return
@@ -303,21 +390,30 @@ const HomeP = () => {
         puntoReferencia,
         selectedVehicle,
         valorPersonalizado: Number.parseFloat(valorPersonalizado),
+        usuario_id: usuarioId, // ✅ Incluir el ID del usuario logueado
       }
+
+      console.log("📤 Enviando solicitud de viaje:", viajeData)
 
       const res = await fetch(baseUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // Opcional: incluir el token en los headers si el backend lo requiere
+          Authorization: `Bearer ${await AsyncStorage.getItem("token")}`,
+        },
         body: JSON.stringify(viajeData),
       })
 
       const json = await res.json()
+      console.log("📥 Respuesta del servidor:", json)
 
       if (res.ok) {
         // En lugar de mostrar alert, cambiar al estado de espera
         setIsSubmittingRequest(false)
         setIsWaitingForDriver(true)
         limpiarFormulario()
+        console.log("✅ Solicitud de viaje enviada exitosamente")
       } else {
         console.error("❌ Error en la solicitud:", json)
         setIsSubmittingRequest(false)
@@ -347,6 +443,19 @@ const HomeP = () => {
   const cancelarBusqueda = () => {
     setIsWaitingForDriver(false)
     closeModal()
+  }
+
+  // Mostrar loading si no tenemos el usuario aún
+  if (!usuarioId) {
+    return (
+      <LinearGradient
+        colors={["#CF5BA9", "#B33F8D"]}
+        style={[styles.container, { justifyContent: "center", alignItems: "center" }]}
+      >
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={{ color: "#fff", marginTop: 10, fontSize: 16 }}>Cargando...</Text>
+      </LinearGradient>
+    )
   }
 
   return (
@@ -431,6 +540,8 @@ const HomeP = () => {
                   <Text style={styles.waitingMessage}>Buscando una conductora disponible...</Text>
                   <Text style={styles.waitingSubMessage}>Te notificaremos cuando encontremos una conductora</Text>
 
+                  
+
                   <TouchableOpacity style={styles.cancelSearchButton} onPress={cancelarBusqueda}>
                     <Text style={styles.cancelSearchButtonText}>Cancelar búsqueda</Text>
                   </TouchableOpacity>
@@ -461,8 +572,10 @@ const HomeP = () => {
                       paddingBottom: isKeyboardVisible ? keyboardHeight + 20 : 20,
                     }}
                   >
+                    
+
                     {/* SECCIÓN DE UBICACIÓN ACTUAL */}
-                    <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 10 }]}>Ubicación actual</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: 10, marginBottom: 10 }]}>Ubicación actual</Text>
 
                     {/* Campo de ubicación actual - dirección */}
                     <TextInput

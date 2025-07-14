@@ -43,56 +43,8 @@ const HomeDriver = () => {
   const [editingPrice, setEditingPrice] = useState<string | null>(null)
   const [counterOfferPrice, setCounterOfferPrice] = useState("")
 
-  const [rideRequests, setRideRequests] = useState<RideRequest[]>([
-    {
-      id: "1",
-      passengerName: "Carolina",
-      pickupAddress: "Av. Circunvalar #9-42",
-      pickupNeighborhood: "Belén",
-      pickupZone: "Norte",
-      destinationAddress: "Centro Comercial Palmetto",
-      destinationNeighborhood: "Ciudad Jardín",
-      destinationZone: "Sur",
-      proposedPrice: 8500,
-      passenger: {
-        phone: "+57 315 789 4321",
-        whatsapp: "+573157894321",
-        photo: "https://i.pravatar.cc/150?img=23",
-      },
-    },
-    {
-      id: "2",
-      passengerName: "María",
-      pickupAddress: "Calle 5 #38-25",
-      pickupNeighborhood: "San Fernando",
-      pickupZone: "Centro",
-      destinationAddress: "Terminal de Transporte",
-      destinationNeighborhood: "Terminal",
-      destinationZone: "Este",
-      proposedPrice: 12000,
-      passenger: {
-        phone: "+57 300 456 7890",
-        whatsapp: "+573004567890",
-        photo: "https://i.pravatar.cc/150?img=44",
-      },
-    },
-    {
-      id: "3",
-      passengerName: "Andrea",
-      pickupAddress: "Av. 6N #23-45",
-      pickupNeighborhood: "Versalles",
-      pickupZone: "Norte",
-      destinationAddress: "Universidad del Valle",
-      destinationNeighborhood: "Meléndez",
-      destinationZone: "Sur",
-      proposedPrice: 15000,
-      passenger: {
-        phone: "+57 312 987 6543",
-        whatsapp: "+573129876543",
-        photo: "https://i.pravatar.cc/150?img=32",
-      },
-    },
-  ])
+  const [rideRequests, setRideRequests] = useState<RideRequest[]>([])
+
 
   const navigateTo = (screen: RelativePathString | ExternalPathString) => {
     router.push(screen)
@@ -162,11 +114,46 @@ const HomeDriver = () => {
     }
   }
 
+  const fetchPendingRides = async () => {
+  try {
+    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes")
+    const data = await response.json()
+
+    if (response.ok && data.viajes) {
+      // Mapeamos los datos del backend al formato esperado en tu interfaz
+      const formattedRides: RideRequest[] = data.viajes.map((viaje: any) => ({
+        id: viaje.id.toString(),
+        passengerName: "Pasajera", // Aquí puedes ajustar si luego tienes nombres
+        pickupAddress: viaje.ubicacionActual,
+        pickupNeighborhood: viaje.barrioActual,
+        pickupZone: viaje.zonaActual,
+        destinationAddress: viaje.destinoDireccion,
+        destinationNeighborhood: viaje.destinoBarrio,
+        destinationZone: viaje.destinoZona,
+        proposedPrice: Number(viaje.valorPersonalizado ?? 0),
+        passenger: {
+          phone: "N/A",
+          whatsapp: "N/A",
+          photo: "https://i.pravatar.cc/150?img=47", // puedes cambiar esto por un campo real
+        }
+      }))
+      setRideRequests(formattedRides)
+    } else {
+      console.error("❌ Error de respuesta de la API:", data)
+    }
+  } catch (error) {
+    console.error("❌ Error al conectar con la API:", error)
+  }
+}
+
+
   useFocusEffect(
-    useCallback(() => {
-      fetchUserProfile()
-    }, []),
-  )
+  useCallback(() => {
+    fetchUserProfile()
+    fetchPendingRides()
+  }, [])
+)
+
 
   const renderRideRequest = ({ item }: { item: RideRequest }) => (
     <View style={styles.rideRequestCard}>
