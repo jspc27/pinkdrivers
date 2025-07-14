@@ -301,6 +301,84 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffb6c1",
     shadowOpacity: 0.1,
   },
+
+  // Nuevos estilos para el estado de espera
+  waitingContainer: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+
+  waitingHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "#FF69B4",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+
+  waitingTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+    flex: 1,
+    textAlign: "center",
+  },
+
+  cancelButton: {
+    padding: 5,
+  },
+
+  waitingContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+
+  loadingIndicator: {
+    marginBottom: 30,
+  },
+
+  waitingMessage: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+
+  waitingSubMessage: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 40,
+    lineHeight: 20,
+  },
+
+  cancelSearchButton: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+
+  cancelSearchButtonText: {
+    color: "#666",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+
+  buttonLoadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+ 
 })
 
 export default styles

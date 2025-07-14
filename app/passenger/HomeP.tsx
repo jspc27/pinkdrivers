@@ -21,6 +21,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native"
 import MapView, { Marker, Polyline } from "react-native-maps"
 import styles from "../styles/HomePstyles"
@@ -32,6 +33,7 @@ const HomeP = () => {
   const [ubicacionActual, setUbicacionActual] = useState("")
   const [barrioActual, setBarrioActual] = useState("")
   const [zonaActual, setZonaActual] = useState("")
+  const [ciudadActual, setCiudadActual] = useState("")
   const [destinoDireccion, setDestinoDireccion] = useState("")
   const [destinoBarrio, setDestinoBarrio] = useState("")
   const [destinoZona, setDestinoZona] = useState("")
@@ -41,6 +43,10 @@ const HomeP = () => {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [activeField, setActiveField] = useState<string | null>(null)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+
+  // Nuevos estados para el manejo de la solicitud
+  const [isWaitingForDriver, setIsWaitingForDriver] = useState(false)
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
 
   const [region, setRegion] = useState({
     latitude: 3.4516,
@@ -64,6 +70,7 @@ const HomeP = () => {
   const ubicacionActualRef = useRef<TextInput>(null)
   const barrioActualRef = useRef<TextInput>(null)
   const zonaActualRef = useRef<TextInput>(null)
+  const ciudadActualRef = useRef<TextInput>(null)
   const destinoDireccionRef = useRef<TextInput>(null)
   const destinoBarrioRef = useRef<TextInput>(null)
   const destinoZonaRef = useRef<TextInput>(null)
@@ -119,6 +126,9 @@ const HomeP = () => {
           if (!zonaActual) {
             setZonaActual(determinarZona(lat, lng))
           }
+          if (!ciudadActual) {
+            setCiudadActual(data.address.city || data.address.town || data.address.village || "")
+          }
         } else {
           if (!ubicacionActual) {
             setUbicacionActual("Ubicación no encontrada")
@@ -133,7 +143,7 @@ const HomeP = () => {
     }
 
     obtenerUbicacion()
-  }, [ubicacionActual, barrioActual, zonaActual])
+  }, [ubicacionActual, barrioActual, zonaActual, ciudadActual])
 
   // Keyboard event listeners
   useEffect(() => {
@@ -230,6 +240,8 @@ const HomeP = () => {
   const closeModal = () => {
     setIsModalVisible(false)
     setActiveField(null)
+    setIsWaitingForDriver(false)
+    setIsSubmittingRequest(false)
     if (isKeyboardVisible) {
       Keyboard.dismiss()
     }
@@ -245,6 +257,7 @@ const HomeP = () => {
       ubicacionActual &&
       barrioActual &&
       zonaActual &&
+      ciudadActual &&
       destinoDireccion &&
       destinoBarrio &&
       destinoZona &&
@@ -254,40 +267,71 @@ const HomeP = () => {
     )
   }
 
-  const handleConfirmarViaje = () => {
-    if (isFormComplete()) {
-      const ubicacionCompleta = `${ubicacionActual} ${barrioActual} ${zonaActual}`.trim()
-      const destinoCompleto = `${destinoDireccion} ${destinoBarrio} ${destinoZona}`.trim()
+  // Función para limpiar el formulario
+  const limpiarFormulario = () => {
+    setUbicacionActual("")
+    setBarrioActual("")
+    setZonaActual("")
+    setCiudadActual("")
+    setDestinoDireccion("")
+    setDestinoBarrio("")
+    setDestinoZona("")
+    setPuntoReferencia("")
+    setValorPersonalizado("")
+    setSelectedVehicle("")
+  }
 
-      Alert.alert(
-        "Solicitud Confirmada",
-        `Estoy en: ${ubicacionCompleta}\nVoy a: ${destinoCompleto}\nPunto de referencia: ${puntoReferencia}\nVehículo: ${selectedVehicle}\nPrecio: $${valorPersonalizado} COP`,
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              closeModal()
-              // Limpiar formulario
-              setUbicacionActual("")
-              setBarrioActual("")
-              setZonaActual("")
-              setDestinoDireccion("")
-              setDestinoBarrio("")
-              setDestinoZona("")
-              setPuntoReferencia("")
-              setValorPersonalizado("")
-              setSelectedVehicle("")
-            },
-          },
-        ],
-      )
-    } else {
+  const handleConfirmarViaje = async () => {
+    if (!isFormComplete()) {
       Alert.alert("Formulario incompleto", "Por favor completa todos los campos")
+      return
+    }
+
+    setIsSubmittingRequest(true)
+
+    try {
+      const baseUrl = "https://www.pinkdrivers.com/api-rest/index.php?action=viajes"
+
+      const viajeData = {
+        ubicacionActual,
+        barrioActual,
+        zonaActual,
+        ciudadActual,
+        destinoDireccion,
+        destinoBarrio,
+        destinoZona,
+        puntoReferencia,
+        selectedVehicle,
+        valorPersonalizado: Number.parseFloat(valorPersonalizado),
+      }
+
+      const res = await fetch(baseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(viajeData),
+      })
+
+      const json = await res.json()
+
+      if (res.ok) {
+        // En lugar de mostrar alert, cambiar al estado de espera
+        setIsSubmittingRequest(false)
+        setIsWaitingForDriver(true)
+        limpiarFormulario()
+      } else {
+        console.error("❌ Error en la solicitud:", json)
+        setIsSubmittingRequest(false)
+        Alert.alert("Error", json.error || "Hubo un problema al solicitar el viaje.")
+      }
+    } catch (error) {
+      console.error("❌ Error al conectar con la API:", error)
+      setIsSubmittingRequest(false)
+      Alert.alert("Error de conexión", "No se pudo enviar el viaje. Verifica tu conexión.")
     }
   }
 
   const getUbicacionActualText = () => {
-    const partes = [ubicacionActual, barrioActual, zonaActual].filter(Boolean)
+    const partes = [ubicacionActual, barrioActual, zonaActual, ciudadActual].filter(Boolean)
     return partes.length > 0 ? `${partes.join(" ")}` : "Obteniendo ubicación..."
   }
 
@@ -297,6 +341,12 @@ const HomeP = () => {
     setTimeout(() => {
       ubicacionActualRef.current?.focus()
     }, 500)
+  }
+
+  // Función para cancelar la búsqueda de conductora
+  const cancelarBusqueda = () => {
+    setIsWaitingForDriver(false)
+    closeModal()
   }
 
   return (
@@ -366,196 +416,260 @@ const HomeP = () => {
               },
             ]}
           >
-            {/* Header del modal */}
-            <View style={styles.modalHeader}>
-              <View style={{ width: 40 }} />
-              <Text style={styles.modalTitle}>Detalles del viaje</Text>
-              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
-                <FontAwesome name="chevron-up" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Contenido del modal */}
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContent}>
-              <ScrollView
-                ref={scrollViewRef}
-                style={styles.modalScrollView}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{
-                  paddingBottom: isKeyboardVisible ? keyboardHeight + 20 : 20,
-                }}
-              >
-                {/* SECCIÓN DE UBICACIÓN ACTUAL */}
-                <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 10 }]}>Ubicación actual</Text>
-
-                {/* Campo de ubicación actual - dirección */}
-                <TextInput
-                  ref={ubicacionActualRef}
-                  style={[styles.modalInput, activeField === "ubicacionActual" && styles.modalInputFocused]}
-                  placeholder="Dirección actual"
-                  placeholderTextColor="#666"
-                  value={ubicacionActual}
-                  onChangeText={setUbicacionActual}
-                  onFocus={() => setActiveField("ubicacionActual")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => barrioActualRef.current?.focus()}
-                />
-
-                {/* Campo de ubicación actual - barrio */}
-                <TextInput
-                  ref={barrioActualRef}
-                  style={[styles.modalInput, activeField === "barrioActual" && styles.modalInputFocused]}
-                  placeholder="Barrio actual"
-                  placeholderTextColor="#666"
-                  value={barrioActual}
-                  onChangeText={setBarrioActual}
-                  onFocus={() => setActiveField("barrioActual")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => zonaActualRef.current?.focus()}
-                />
-
-                {/* Campo de ubicación actual - zona */}
-                <TextInput
-                  ref={zonaActualRef}
-                  style={[styles.modalInput, activeField === "zonaActual" && styles.modalInputFocused]}
-                  placeholder="Zona actual (Norte, Sur, Oriente, Occidente)"
-                  placeholderTextColor="#666"
-                  value={zonaActual}
-                  onChangeText={setZonaActual}
-                  onFocus={() => setActiveField("zonaActual")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => destinoDireccionRef.current?.focus()}
-                />
-
-                {/* SECCIÓN DE DESTINO */}
-                <Text style={[styles.sectionTitle, { marginTop: 20, marginBottom: 10 }]}>Destino</Text>
-
-                {/* Campo de destino - dirección */}
-                <TextInput
-                  ref={destinoDireccionRef}
-                  style={[styles.modalInput, activeField === "destinoDireccion" && styles.modalInputFocused]}
-                  placeholder="Dirección de destino"
-                  placeholderTextColor="#666"
-                  value={destinoDireccion}
-                  onChangeText={setDestinoDireccion}
-                  onFocus={() => setActiveField("destinoDireccion")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => destinoBarrioRef.current?.focus()}
-                />
-
-                {/* Campo de destino - barrio */}
-                <TextInput
-                  ref={destinoBarrioRef}
-                  style={[styles.modalInput, activeField === "destinoBarrio" && styles.modalInputFocused]}
-                  placeholder="Barrio de destino"
-                  placeholderTextColor="#666"
-                  value={destinoBarrio}
-                  onChangeText={setDestinoBarrio}
-                  onFocus={() => setActiveField("destinoBarrio")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => destinoZonaRef.current?.focus()}
-                />
-
-                {/* Campo de destino - zona */}
-                <TextInput
-                  ref={destinoZonaRef}
-                  style={[styles.modalInput, activeField === "destinoZona" && styles.modalInputFocused]}
-                  placeholder="Zona de destino (Norte, Sur, Oriente, Occidente)"
-                  placeholderTextColor="#666"
-                  value={destinoZona}
-                  onChangeText={setDestinoZona}
-                  onFocus={() => setActiveField("destinoZona")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => referenciaRef.current?.focus()}
-                />
-
-                {/* Campo de punto de referencia */}
-                <TextInput
-                  ref={referenciaRef}
-                  style={[styles.modalInput, activeField === "referencia" && styles.modalInputFocused]}
-                  placeholder="Punto de referencia cercano (recogida)"
-                  placeholderTextColor="#666"
-                  value={puntoReferencia}
-                  onChangeText={setPuntoReferencia}
-                  onFocus={() => setActiveField("referencia")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => precioRef.current?.focus()}
-                />
-
-                {/* Selección de vehículo */}
-                <View style={styles.vehicleSelectionContainer}>
-                  <Text style={styles.sectionTitle}>Selecciona el vehículo</Text>
-                  <View style={styles.vehicleOptions}>
-                    <TouchableOpacity
-                      style={[styles.vehicleOption, selectedVehicle === "moto" && styles.selectedVehicleOption]}
-                      onPress={() => selectVehicle("moto")}
-                    >
-                      <FontAwesome5 name="motorcycle" size={24} color={selectedVehicle === "moto" ? "#fff" : "#333"} />
-                      <Text style={[styles.vehicleText, selectedVehicle === "moto" && styles.selectedVehicleText]}>
-                        Moto
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.vehicleOption, selectedVehicle === "carro" && styles.selectedVehicleOption]}
-                      onPress={() => selectVehicle("carro")}
-                    >
-                      <FontAwesome name="car" size={24} color={selectedVehicle === "carro" ? "#fff" : "#333"} />
-                      <Text style={[styles.vehicleText, selectedVehicle === "carro" && styles.selectedVehicleText]}>
-                        Carro
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.vehicleOption, selectedVehicle === "motocarro" && styles.selectedVehicleOption]}
-                      onPress={() => selectVehicle("motocarro")}
-                    >
-                      <FontAwesome name="truck" size={24} color={selectedVehicle === "motocarro" ? "#fff" : "#333"} />
-                      <Text style={[styles.vehicleText, selectedVehicle === "motocarro" && styles.selectedVehicleText]}>
-                        Motocarro
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+            {/* Mostrar estado de espera de conductora */}
+            {isWaitingForDriver ? (
+              <View style={styles.waitingContainer}>
+                <View style={styles.waitingHeader}>
+                  <Text style={styles.waitingTitle}>Esperando conductora</Text>
+                  <TouchableOpacity style={styles.cancelButton} onPress={cancelarBusqueda}>
+                    <FontAwesome name="times" size={20} color="#fff" />
+                  </TouchableOpacity>
                 </View>
 
-                {/* Campo de precio personalizado */}
-                <TextInput
-                  ref={precioRef}
-                  style={[styles.modalInput, activeField === "precio" && styles.modalInputFocused]}
-                  placeholder="Pon tu precio"
-                  placeholderTextColor="#666"
-                  value={valorPersonalizado}
-                  onChangeText={setValorPersonalizado}
-                  keyboardType="numeric"
-                  onFocus={() => setActiveField("precio")}
-                  onBlur={() => setActiveField(null)}
-                  returnKeyType="done"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
+                <View style={styles.waitingContent}>
+                  <ActivityIndicator size="large" color="#FF69B4" style={styles.loadingIndicator} />
+                  <Text style={styles.waitingMessage}>Buscando una conductora disponible...</Text>
+                  <Text style={styles.waitingSubMessage}>Te notificaremos cuando encontremos una conductora</Text>
 
-                {priceEstimate && !valorPersonalizado && (
-                  <Text style={styles.priceEstimateText}>
-                    Precio sugerido: ${priceEstimate.toLocaleString("es-CO")} COP
-                    {routeDistance && ` (${routeDistance.toFixed(1)} km)`}
-                  </Text>
-                )}
+                  <TouchableOpacity style={styles.cancelSearchButton} onPress={cancelarBusqueda}>
+                    <Text style={styles.cancelSearchButtonText}>Cancelar búsqueda</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                {/* Header del modal */}
+                <View style={styles.modalHeader}>
+                  <View style={{ width: 40 }} />
+                  <Text style={styles.modalTitle}>Detalles del viaje</Text>
+                  <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                    <FontAwesome name="chevron-up" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
 
-                {/* Botón de confirmar solicitud */}
-                <TouchableOpacity
-                  style={[styles.modalButton, !isFormComplete() && styles.modalButtonDisabled]}
-                  disabled={!isFormComplete()}
-                  onPress={handleConfirmarViaje}
+                {/* Contenido del modal */}
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === "ios" ? "padding" : "height"}
+                  style={styles.modalContent}
                 >
-                  <Text style={styles.modalButtonText}>Confirmar solicitud</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </KeyboardAvoidingView>
+                  <ScrollView
+                    ref={scrollViewRef}
+                    style={styles.modalScrollView}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{
+                      paddingBottom: isKeyboardVisible ? keyboardHeight + 20 : 20,
+                    }}
+                  >
+                    {/* SECCIÓN DE UBICACIÓN ACTUAL */}
+                    <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 10 }]}>Ubicación actual</Text>
+
+                    {/* Campo de ubicación actual - dirección */}
+                    <TextInput
+                      ref={ubicacionActualRef}
+                      style={[styles.modalInput, activeField === "ubicacionActual" && styles.modalInputFocused]}
+                      placeholder="Dirección actual"
+                      placeholderTextColor="#666"
+                      value={ubicacionActual}
+                      onChangeText={setUbicacionActual}
+                      onFocus={() => setActiveField("ubicacionActual")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => barrioActualRef.current?.focus()}
+                    />
+
+                    {/* Campo de ubicación actual - barrio */}
+                    <TextInput
+                      ref={barrioActualRef}
+                      style={[styles.modalInput, activeField === "barrioActual" && styles.modalInputFocused]}
+                      placeholder="Barrio actual"
+                      placeholderTextColor="#666"
+                      value={barrioActual}
+                      onChangeText={setBarrioActual}
+                      onFocus={() => setActiveField("barrioActual")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => zonaActualRef.current?.focus()}
+                    />
+
+                    {/* Campo de ubicación actual - zona */}
+                    <TextInput
+                      ref={zonaActualRef}
+                      style={[styles.modalInput, activeField === "zonaActual" && styles.modalInputFocused]}
+                      placeholder="Zona actual (Norte, Sur, Oriente, Occidente)"
+                      placeholderTextColor="#666"
+                      value={zonaActual}
+                      onChangeText={setZonaActual}
+                      onFocus={() => setActiveField("zonaActual")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => destinoDireccionRef.current?.focus()}
+                    />
+
+                    {/* Campo de ubicación actual - ciudad */}
+                    <TextInput
+                      ref={ciudadActualRef}
+                      style={[styles.modalInput, activeField === "ciudadActual" && styles.modalInputFocused]}
+                      placeholder="Ciudad actual"
+                      placeholderTextColor="#666"
+                      value={ciudadActual}
+                      onChangeText={setCiudadActual}
+                      onFocus={() => setActiveField("ciudadActual")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => destinoDireccionRef.current?.focus()}
+                    />
+
+                    {/* SECCIÓN DE DESTINO */}
+                    <Text style={[styles.sectionTitle, { marginTop: 20, marginBottom: 10 }]}>Destino</Text>
+
+                    {/* Campo de destino - dirección */}
+                    <TextInput
+                      ref={destinoDireccionRef}
+                      style={[styles.modalInput, activeField === "destinoDireccion" && styles.modalInputFocused]}
+                      placeholder="Dirección de destino"
+                      placeholderTextColor="#666"
+                      value={destinoDireccion}
+                      onChangeText={setDestinoDireccion}
+                      onFocus={() => setActiveField("destinoDireccion")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => destinoBarrioRef.current?.focus()}
+                    />
+
+                    {/* Campo de destino - barrio */}
+                    <TextInput
+                      ref={destinoBarrioRef}
+                      style={[styles.modalInput, activeField === "destinoBarrio" && styles.modalInputFocused]}
+                      placeholder="Barrio de destino"
+                      placeholderTextColor="#666"
+                      value={destinoBarrio}
+                      onChangeText={setDestinoBarrio}
+                      onFocus={() => setActiveField("destinoBarrio")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => destinoZonaRef.current?.focus()}
+                    />
+
+                    {/* Campo de destino - zona */}
+                    <TextInput
+                      ref={destinoZonaRef}
+                      style={[styles.modalInput, activeField === "destinoZona" && styles.modalInputFocused]}
+                      placeholder="Zona de destino (Norte, Sur, Oriente, Occidente)"
+                      placeholderTextColor="#666"
+                      value={destinoZona}
+                      onChangeText={setDestinoZona}
+                      onFocus={() => setActiveField("destinoZona")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => referenciaRef.current?.focus()}
+                    />
+
+                    {/* Campo de punto de referencia */}
+                    <TextInput
+                      ref={referenciaRef}
+                      style={[styles.modalInput, activeField === "referencia" && styles.modalInputFocused]}
+                      placeholder="Punto de referencia cercano (recogida)"
+                      placeholderTextColor="#666"
+                      value={puntoReferencia}
+                      onChangeText={setPuntoReferencia}
+                      onFocus={() => setActiveField("referencia")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="next"
+                      onSubmitEditing={() => precioRef.current?.focus()}
+                    />
+
+                    {/* Selección de vehículo */}
+                    <View style={styles.vehicleSelectionContainer}>
+                      <Text style={styles.sectionTitle}>Selecciona el vehículo</Text>
+                      <View style={styles.vehicleOptions}>
+                        <TouchableOpacity
+                          style={[styles.vehicleOption, selectedVehicle === "moto" && styles.selectedVehicleOption]}
+                          onPress={() => selectVehicle("moto")}
+                        >
+                          <FontAwesome5
+                            name="motorcycle"
+                            size={24}
+                            color={selectedVehicle === "moto" ? "#fff" : "#333"}
+                          />
+                          <Text style={[styles.vehicleText, selectedVehicle === "moto" && styles.selectedVehicleText]}>
+                            Moto
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.vehicleOption, selectedVehicle === "carro" && styles.selectedVehicleOption]}
+                          onPress={() => selectVehicle("carro")}
+                        >
+                          <FontAwesome name="car" size={24} color={selectedVehicle === "carro" ? "#fff" : "#333"} />
+                          <Text style={[styles.vehicleText, selectedVehicle === "carro" && styles.selectedVehicleText]}>
+                            Carro
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.vehicleOption,
+                            selectedVehicle === "motocarro" && styles.selectedVehicleOption,
+                          ]}
+                          onPress={() => selectVehicle("motocarro")}
+                        >
+                          <FontAwesome
+                            name="truck"
+                            size={24}
+                            color={selectedVehicle === "motocarro" ? "#fff" : "#333"}
+                          />
+                          <Text
+                            style={[styles.vehicleText, selectedVehicle === "motocarro" && styles.selectedVehicleText]}
+                          >
+                            Motocarro
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Campo de precio personalizado */}
+                    <TextInput
+                      ref={precioRef}
+                      style={[styles.modalInput, activeField === "precio" && styles.modalInputFocused]}
+                      placeholder="Pon tu precio"
+                      placeholderTextColor="#666"
+                      value={valorPersonalizado}
+                      onChangeText={setValorPersonalizado}
+                      keyboardType="numeric"
+                      onFocus={() => setActiveField("precio")}
+                      onBlur={() => setActiveField(null)}
+                      returnKeyType="done"
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                    />
+
+                    {priceEstimate && !valorPersonalizado && (
+                      <Text style={styles.priceEstimateText}>
+                        Precio sugerido: ${priceEstimate.toLocaleString("es-CO")} COP
+                        {routeDistance && ` (${routeDistance.toFixed(1)} km)`}
+                      </Text>
+                    )}
+
+                    {/* Botón de confirmar solicitud */}
+                    <TouchableOpacity
+                      style={[
+                        styles.modalButton,
+                        (!isFormComplete() || isSubmittingRequest) && styles.modalButtonDisabled,
+                      ]}
+                      disabled={!isFormComplete() || isSubmittingRequest}
+                      onPress={handleConfirmarViaje}
+                    >
+                      {isSubmittingRequest ? (
+                        <View style={styles.buttonLoadingContainer}>
+                          <ActivityIndicator size="small" color="#fff" style={{ marginRight: 10 }} />
+                          <Text style={styles.modalButtonText}>Enviando solicitud...</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.modalButtonText}>Confirmar solicitud</Text>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </KeyboardAvoidingView>
+              </>
+            )}
           </Animated.View>
         </>
       )}
