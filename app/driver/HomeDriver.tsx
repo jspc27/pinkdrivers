@@ -43,8 +43,45 @@ const HomeDriver = () => {
   const [editingPrice, setEditingPrice] = useState<string | null>(null)
   const [counterOfferPrice, setCounterOfferPrice] = useState("")
 
+  const [conductoraId, setConductoraId] = useState<number | null>(null)
+
+
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([])
 
+
+  const decodeJWT = (token: string) => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error("Error decodificando JWT:", error);
+    return null;
+  }
+};
+
+useEffect(() => {
+  const obtenerConductoraId = async () => {
+    const token = await AsyncStorage.getItem("token");
+    if (token) {
+      const decoded = decodeJWT(token);
+      if (decoded && decoded.id) {
+        setConductoraId(decoded.id);
+        console.log("✅ ID de conductora:", decoded.id);
+      } else {
+        console.warn("❌ No se pudo decodificar el token.");
+      }
+    }
+  };
+
+  obtenerConductoraId();
+}, []);
 
   const navigateTo = (screen: RelativePathString | ExternalPathString) => {
     router.push(screen)
@@ -67,22 +104,23 @@ const HomeDriver = () => {
 
   const submitCounterOffer = async (requestId: string) => {
   const newPrice = Number.parseInt(counterOfferPrice)
-  if (newPrice && newPrice > 0) {
+  if (newPrice && newPrice > 0 && conductoraId !== null) {
     try {
       const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=actualizar_precio", {
-        method: "POST", // o "PUT" si prefieres
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           viaje_id: requestId,
           nuevo_precio: newPrice,
+          conductora_id: conductoraId, // ✅ se envía ahora
         }),
       })
 
       const data = await response.json()
       if (response.ok) {
-        // Actualiza localmente
+        // Actualiza el precio en el estado local
         setRideRequests((prev) =>
           prev.map((request) =>
             request.id === requestId ? { ...request, proposedPrice: newPrice } : request
@@ -96,11 +134,14 @@ const HomeDriver = () => {
       console.error("❌ Error al enviar contrapropuesta:", error)
       Alert.alert("Error", "Error al conectar con el servidor.")
     }
+  } else {
+    Alert.alert("Error", "Faltan datos para enviar la contrapropuesta.")
   }
 
   setEditingPrice(null)
   setCounterOfferPrice("")
 }
+
 
 
   const acceptRide = (requestId: string) => {

@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import StyledAlert from '../components/StyledAlert';
 import styles from '../styles/LoginDstyles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginD = () => {
   const [telefono, setTelefono] = useState('');
@@ -51,11 +52,14 @@ const LoginD = () => {
 
       const data = await response.json();
 
-      if (response.ok && data.message === 'Inicio de sesión exitoso') {
-        setShowPermissionModal(true); // Mostrar modal antes de redirigir
-      } else {
-        showStyledAlert(data.message || 'Credenciales incorrectas');
-      }
+      if (response.ok && data.message === 'Inicio de sesión exitoso' && data.token) {
+  // ✅ Guarda el token
+  await AsyncStorage.setItem("token", data.token);
+
+  // Muestra modal y continúa
+  setShowPermissionModal(true);
+}
+
     } catch (error) {
       console.error('Error en el login:', error);
       showStyledAlert('Error de conexión con el servidor');
