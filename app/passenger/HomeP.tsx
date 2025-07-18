@@ -26,8 +26,14 @@ import {
 } from "react-native"
 import MapView, { Marker, Polyline } from "react-native-maps"
 import styles from "../styles/HomePstyles"
-
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window")
+
+interface ContraofertaData {
+  viaje_id: number
+  valorPersonalizado: string
+  conductora_nombre: string
+  vehiculo_placa: string
+}
 
 const HomeP = () => {
   const [menuVisible, setMenuVisible] = useState(false)
@@ -45,9 +51,14 @@ const HomeP = () => {
   const [activeField, setActiveField] = useState<string | null>(null)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
-  // Nuevos estados para el manejo de la solicitud
+  // Estados para el manejo de la solicitud
   const [isWaitingForDriver, setIsWaitingForDriver] = useState(false)
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
+
+  // Estados para contraofertas
+  const [contraofertaData, setContraofertaData] = useState<ContraofertaData | null>(null)
+  const [showContraoferta, setShowContraoferta] = useState(false)
+  const [isProcessingResponse, setIsProcessingResponse] = useState(false)
 
   const [region, setRegion] = useState({
     latitude: 3.4516,
@@ -82,7 +93,7 @@ const HomeP = () => {
   const [usuarioId, setUsuarioId] = useState<number | null>(null)
   const [usuarioData, setUsuarioData] = useState<any>(null)
 
-  // Función para decodificar JWT (simple, sin librerías externas)
+  // Función para decodificar JWT
   const decodeJWT = (token: string) => {
     try {
       const base64Url = token.split(".")[1]
@@ -106,6 +117,135 @@ const HomeP = () => {
     if (latitude < 3.45 && longitude < -76.53) return "Sur"
     if (latitude > 3.45 && longitude > -76.53) return "Oriente"
     return "Occidente"
+  }
+
+  // Función para consultar contraofertas usando el controlador PHP
+ const consultarContraoferta = async () => {
+  try {
+    const token = await AsyncStorage.getItem("token")
+    console.log("🟡 Token usado:", token)
+
+    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    })
+
+    const data = await response.json()
+    console.log("🟡 Respuesta cruda:", data)
+
+    if (response.ok && data.success && data.data) {
+      console.log("✅ Contraoferta recibida:", data.data)
+      setContraofertaData(data.data)
+      setShowContraoferta(true)
+    } else {
+      console.log("ℹ️ No hay contraofertas disponibles:", data.message)
+      setContraofertaData(null)
+      setShowContraoferta(false)
+    }
+  } catch (error) {
+    console.error("❌ Error al consultar contraoferta:", error)
+    setContraofertaData(null)
+    setShowContraoferta(false)
+  }
+}
+
+
+  // Función para aceptar contraoferta
+  const aceptarContraoferta = async () => {
+    if (!contraofertaData) return
+
+    setIsProcessingResponse(true)
+    try {
+      const token = await AsyncStorage.getItem("token")
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_contraoferta", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          viaje_id: contraofertaData.viaje_id,
+          aceptado: true,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        Alert.alert(
+          "¡Contraoferta aceptada!",
+          `Has aceptado la propuesta de ${contraofertaData.conductora_nombre} por $${Number(contraofertaData.valorPersonalizado).toLocaleString()} COP`,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setShowContraoferta(false)
+                setContraofertaData(null)
+                setIsWaitingForDriver(false)
+                closeModal()
+              },
+            },
+          ],
+        )
+      } else {
+        Alert.alert("Error", data.message || "No se pudo aceptar la contraoferta")
+      }
+    } catch (error) {
+      console.error("Error al aceptar contraoferta:", error)
+      Alert.alert("Error", "No se pudo procesar la respuesta")
+    } finally {
+      setIsProcessingResponse(false)
+    }
+  }
+
+  // Función para rechazar contraoferta
+  const rechazarContraoferta = async () => {
+    if (!contraofertaData) return
+
+    setIsProcessingResponse(true)
+    try {
+      const token = await AsyncStorage.getItem("token")
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=rechazar_contraoferta", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          viaje_id: contraofertaData.viaje_id,
+          aceptado: false,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        Alert.alert(
+          "Contraoferta rechazada",
+          "Has rechazado la propuesta. Seguiremos buscando otras conductoras disponibles.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setShowContraoferta(false)
+                setContraofertaData(null)
+                // Continuar buscando conductoras
+              },
+            },
+          ],
+        )
+      } else {
+        Alert.alert("Error", data.message || "No se pudo rechazar la contraoferta")
+      }
+    } catch (error) {
+      console.error("Error al rechazar contraoferta:", error)
+      Alert.alert("Error", "No se pudo procesar la respuesta")
+    } finally {
+      setIsProcessingResponse(false)
+    }
   }
 
   useEffect(() => {
@@ -139,7 +279,6 @@ const HomeP = () => {
         const textResponse = await response.text()
         const data = JSON.parse(textResponse)
         if (data.address) {
-          // Solo actualizar si los campos están vacíos (para no sobrescribir ediciones del usuario)
           if (!ubicacionActual) {
             setUbicacionActual(data.address.road || "Ubicación no encontrada")
           }
@@ -167,6 +306,27 @@ const HomeP = () => {
 
     obtenerUbicacion()
   }, [ubicacionActual, barrioActual, zonaActual, ciudadActual])
+
+  // Polling para consultar contraofertas cuando se está esperando conductora
+  useEffect(() => {
+    let intervalId: number
+
+    if (isWaitingForDriver && !showContraoferta) {
+      // Consultar inmediatamente
+      consultarContraoferta()
+
+      // Luego consultar cada 5 segundos
+      intervalId = setInterval(() => {
+        consultarContraoferta()
+      },5000 )
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [isWaitingForDriver, showContraoferta])
 
   // Keyboard event listeners
   useEffect(() => {
@@ -248,12 +408,10 @@ const HomeP = () => {
 
         if (!token) {
           console.warn("No se encontró el token")
-          // Redirigir al login si no hay token
           router.push("/passenger/LoginP")
           return
         }
 
-        // Método 1: Decodificar el JWT directamente (más rápido)
         const decodedToken = decodeJWT(token)
         if (decodedToken && decodedToken.id) {
           setUsuarioId(decodedToken.id)
@@ -262,7 +420,6 @@ const HomeP = () => {
           return
         }
 
-        // Método 2: Hacer petición al servidor (fallback)
         const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
           method: "GET",
           headers: {
@@ -282,7 +439,6 @@ const HomeP = () => {
           }
         } else {
           console.warn("Error al obtener usuario del servidor:", response.status)
-          // Si el token es inválido, redirigir al login
           if (response.status === 401) {
             await AsyncStorage.removeItem("token")
             router.push("/passenger/LoginP")
@@ -295,6 +451,8 @@ const HomeP = () => {
 
     obtenerUsuario()
   }, [])
+
+  
 
   const toggleMenu = () => {
     setMenuVisible(!menuVisible)
@@ -321,6 +479,8 @@ const HomeP = () => {
     setActiveField(null)
     setIsWaitingForDriver(false)
     setIsSubmittingRequest(false)
+    setShowContraoferta(false)
+    setContraofertaData(null)
     if (isKeyboardVisible) {
       Keyboard.dismiss()
     }
@@ -330,7 +490,6 @@ const HomeP = () => {
     setSelectedVehicle(vehicleType)
   }
 
-  // Validación del formulario
   const isFormComplete = () => {
     return (
       ubicacionActual &&
@@ -343,11 +502,10 @@ const HomeP = () => {
       puntoReferencia &&
       selectedVehicle &&
       valorPersonalizado &&
-      usuarioId // ✅ Validar que tengamos el ID del usuario
+      usuarioId
     )
   }
 
-  // Función para limpiar el formulario
   const limpiarFormulario = () => {
     setUbicacionActual("")
     setBarrioActual("")
@@ -362,7 +520,6 @@ const HomeP = () => {
   }
 
   const handleConfirmarViaje = async () => {
-    // Validar que tengamos el ID del usuario
     if (!usuarioId) {
       Alert.alert("Error de sesión", "No se pudo identificar al usuario. Por favor, inicia sesión nuevamente.")
       router.push("/passenger/LoginP")
@@ -390,7 +547,7 @@ const HomeP = () => {
         puntoReferencia,
         selectedVehicle,
         valorPersonalizado: Number.parseFloat(valorPersonalizado),
-        usuario_id: usuarioId, // ✅ Incluir el ID del usuario logueado
+        usuario_id: usuarioId,
       }
 
       console.log("📤 Enviando solicitud de viaje:", viajeData)
@@ -399,7 +556,6 @@ const HomeP = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Opcional: incluir el token en los headers si el backend lo requiere
           Authorization: `Bearer ${await AsyncStorage.getItem("token")}`,
         },
         body: JSON.stringify(viajeData),
@@ -409,7 +565,6 @@ const HomeP = () => {
       console.log("📥 Respuesta del servidor:", json)
 
       if (res.ok) {
-        // En lugar de mostrar alert, cambiar al estado de espera
         setIsSubmittingRequest(false)
         setIsWaitingForDriver(true)
         limpiarFormulario()
@@ -431,7 +586,6 @@ const HomeP = () => {
     return partes.length > 0 ? `${partes.join(" ")}` : "Obteniendo ubicación..."
   }
 
-  // NUEVA FUNCIÓN - Para abrir el modal desde el campo de ubicación actual
   const openModalFromCurrentLocation = () => {
     setIsModalVisible(true)
     setTimeout(() => {
@@ -439,13 +593,13 @@ const HomeP = () => {
     }, 500)
   }
 
-  // Función para cancelar la búsqueda de conductora
   const cancelarBusqueda = () => {
     setIsWaitingForDriver(false)
+    setShowContraoferta(false)
+    setContraofertaData(null)
     closeModal()
   }
 
-  // Mostrar loading si no tenemos el usuario aún
   if (!usuarioId) {
     return (
       <LinearGradient
@@ -484,16 +638,13 @@ const HomeP = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Footer con campo de búsqueda principal */}
       <View style={[styles.footer, { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10 }]}>
-        {/* Campo de ubicación actual - AHORA EDITABLE */}
         <TouchableOpacity onPress={openModalFromCurrentLocation}>
           <View style={[styles.input, { justifyContent: "center" }]}>
             <Text style={{ color: ubicacionActual ? "#333" : "#666", fontSize: 15 }}>{getUbicacionActualText()}</Text>
           </View>
         </TouchableOpacity>
 
-        {/* Campo de destino - al tocarlo abre el modal */}
         <TouchableOpacity onPress={openModal}>
           <View style={[styles.input, { justifyContent: "center" }]}>
             <Text style={{ color: destinoDireccion ? "#333" : "#666", fontSize: 15 }}>
@@ -506,7 +657,6 @@ const HomeP = () => {
       {/* Modal estilo DiDi */}
       {isModalVisible && (
         <>
-          {/* Overlay */}
           <Animated.View
             style={[
               styles.modalOverlay,
@@ -516,7 +666,6 @@ const HomeP = () => {
             ]}
           ></Animated.View>
 
-          {/* Modal Container */}
           <Animated.View
             style={[
               styles.modalContainer,
@@ -525,11 +674,71 @@ const HomeP = () => {
               },
             ]}
           >
-            {/* Mostrar estado de espera de conductora */}
-            {isWaitingForDriver ? (
+            {/* Mostrar contraoferta si está disponible */}
+            {isWaitingForDriver && showContraoferta && contraofertaData ? (
               <View style={styles.waitingContainer}>
                 <View style={styles.waitingHeader}>
-                  <Text style={styles.waitingTitle}>Esperando conductora</Text>
+                  <Text style={styles.waitingTitle}>¡Nueva propuesta!</Text>
+                  <TouchableOpacity style={styles.cancelButton} onPress={cancelarBusqueda}>
+                    <FontAwesome name="times" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.waitingContent}>
+                  <View style={styles.contraofertaCard}>
+                    <FontAwesome5 name="user-circle" size={60} color="#FF69B4" style={{ marginBottom: 20 }} />
+
+                    <Text style={styles.contraofertaDriverName}>
+                      {contraofertaData.conductora_nombre.split(" ")[0]}
+                    </Text>
+
+                    <Text style={styles.contraofertaPlate}>Placas: {contraofertaData.vehiculo_placa}</Text>
+
+                    <Text style={styles.contraofertaMessage}>Te propuso un precio de:</Text>
+
+                    <Text style={styles.contraofertaPrice}>
+                      ${Number(contraofertaData.valorPersonalizado).toLocaleString()} COP
+                    </Text>
+
+                    <View style={styles.contraofertaButtons}>
+                      <TouchableOpacity
+                        style={[styles.contraofertaButton, styles.rejectButton]}
+                        onPress={rechazarContraoferta}
+                        disabled={isProcessingResponse}
+                      >
+                        {isProcessingResponse ? (
+                          <ActivityIndicator size="small" color="#666" />
+                        ) : (
+                          <>
+                            <FontAwesome name="times" size={16} color="#666" />
+                            <Text style={styles.rejectButtonText}>Rechazar</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.contraofertaButton, styles.acceptButton]}
+                        onPress={aceptarContraoferta}
+                        disabled={isProcessingResponse}
+                      >
+                        {isProcessingResponse ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
+                            <FontAwesome name="check" size={16} color="#fff" />
+                            <Text style={styles.acceptButtonText}>Aceptar</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ) : isWaitingForDriver ? (
+              // Mostrar estado de espera normal
+              <View style={styles.waitingContainer}>
+                <View style={styles.waitingHeader}>
+                  <Text style={styles.waitingTitle}>Buscando conductora</Text>
                   <TouchableOpacity style={styles.cancelButton} onPress={cancelarBusqueda}>
                     <FontAwesome name="times" size={20} color="#fff" />
                   </TouchableOpacity>
@@ -539,8 +748,6 @@ const HomeP = () => {
                   <ActivityIndicator size="large" color="#FF69B4" style={styles.loadingIndicator} />
                   <Text style={styles.waitingMessage}>Buscando una conductora disponible...</Text>
                   <Text style={styles.waitingSubMessage}>Te notificaremos cuando encontremos una conductora</Text>
-
-                  
 
                   <TouchableOpacity style={styles.cancelSearchButton} onPress={cancelarBusqueda}>
                     <Text style={styles.cancelSearchButtonText}>Cancelar búsqueda</Text>
@@ -572,12 +779,9 @@ const HomeP = () => {
                       paddingBottom: isKeyboardVisible ? keyboardHeight + 20 : 20,
                     }}
                   >
-                    
-
                     {/* SECCIÓN DE UBICACIÓN ACTUAL */}
                     <Text style={[styles.sectionTitle, { marginTop: 10, marginBottom: 10 }]}>Ubicación actual</Text>
 
-                    {/* Campo de ubicación actual - dirección */}
                     <TextInput
                       ref={ubicacionActualRef}
                       style={[styles.modalInput, activeField === "ubicacionActual" && styles.modalInputFocused]}
@@ -591,7 +795,6 @@ const HomeP = () => {
                       onSubmitEditing={() => barrioActualRef.current?.focus()}
                     />
 
-                    {/* Campo de ubicación actual - barrio */}
                     <TextInput
                       ref={barrioActualRef}
                       style={[styles.modalInput, activeField === "barrioActual" && styles.modalInputFocused]}
@@ -605,7 +808,6 @@ const HomeP = () => {
                       onSubmitEditing={() => zonaActualRef.current?.focus()}
                     />
 
-                    {/* Campo de ubicación actual - zona */}
                     <TextInput
                       ref={zonaActualRef}
                       style={[styles.modalInput, activeField === "zonaActual" && styles.modalInputFocused]}
@@ -619,7 +821,6 @@ const HomeP = () => {
                       onSubmitEditing={() => destinoDireccionRef.current?.focus()}
                     />
 
-                    {/* Campo de ubicación actual - ciudad */}
                     <TextInput
                       ref={ciudadActualRef}
                       style={[styles.modalInput, activeField === "ciudadActual" && styles.modalInputFocused]}
@@ -636,7 +837,6 @@ const HomeP = () => {
                     {/* SECCIÓN DE DESTINO */}
                     <Text style={[styles.sectionTitle, { marginTop: 20, marginBottom: 10 }]}>Destino</Text>
 
-                    {/* Campo de destino - dirección */}
                     <TextInput
                       ref={destinoDireccionRef}
                       style={[styles.modalInput, activeField === "destinoDireccion" && styles.modalInputFocused]}
@@ -650,7 +850,6 @@ const HomeP = () => {
                       onSubmitEditing={() => destinoBarrioRef.current?.focus()}
                     />
 
-                    {/* Campo de destino - barrio */}
                     <TextInput
                       ref={destinoBarrioRef}
                       style={[styles.modalInput, activeField === "destinoBarrio" && styles.modalInputFocused]}
@@ -664,7 +863,6 @@ const HomeP = () => {
                       onSubmitEditing={() => destinoZonaRef.current?.focus()}
                     />
 
-                    {/* Campo de destino - zona */}
                     <TextInput
                       ref={destinoZonaRef}
                       style={[styles.modalInput, activeField === "destinoZona" && styles.modalInputFocused]}
@@ -678,7 +876,6 @@ const HomeP = () => {
                       onSubmitEditing={() => referenciaRef.current?.focus()}
                     />
 
-                    {/* Campo de punto de referencia */}
                     <TextInput
                       ref={referenciaRef}
                       style={[styles.modalInput, activeField === "referencia" && styles.modalInputFocused]}
@@ -739,7 +936,6 @@ const HomeP = () => {
                       </View>
                     </View>
 
-                    {/* Campo de precio personalizado */}
                     <TextInput
                       ref={precioRef}
                       style={[styles.modalInput, activeField === "precio" && styles.modalInputFocused]}
@@ -761,7 +957,6 @@ const HomeP = () => {
                       </Text>
                     )}
 
-                    {/* Botón de confirmar solicitud */}
                     <TouchableOpacity
                       style={[
                         styles.modalButton,

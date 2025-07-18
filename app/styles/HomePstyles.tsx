@@ -377,6 +377,76 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Estilos para contraoferta
+  contraofertaCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 30,
+    margin: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  contraofertaDriverName: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 8,
+  },
+  contraofertaPlate: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 20,
+  },
+  contraofertaMessage: {
+    fontSize: 16,
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  contraofertaPrice: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FF69B4",
+    marginBottom: 30,
+  },
+  contraofertaButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 15,
+  },
+  contraofertaButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 15,
+    borderRadius: 12,
+    gap: 8,
+  },
+  acceptButton: {
+    backgroundColor: "#FF69B4",
+  },
+  rejectButton: {
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  acceptButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  rejectButtonText: {
+    color: "#666",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
 
  
 })
