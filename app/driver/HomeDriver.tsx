@@ -4,7 +4,7 @@ import { FontAwesome } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LinearGradient } from "expo-linear-gradient"
 import { type ExternalPathString, type RelativePathString, router, useFocusEffect } from "expo-router"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Alert,
   FlatList,
@@ -65,17 +65,43 @@ const HomeDriver = () => {
     setCounterOfferPrice(currentPrice.toString())
   }
 
-  const submitCounterOffer = (requestId: string) => {
-    const newPrice = Number.parseInt(counterOfferPrice)
-    if (newPrice && newPrice > 0) {
-      setRideRequests((prev) =>
-        prev.map((request) => (request.id === requestId ? { ...request, proposedPrice: newPrice } : request)),
-      )
-      Alert.alert("Contrapropuesta enviada", `Has propuesto $${newPrice.toLocaleString()} COP`)
+  const submitCounterOffer = async (requestId: string) => {
+  const newPrice = Number.parseInt(counterOfferPrice)
+  if (newPrice && newPrice > 0) {
+    try {
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=actualizar_precio", {
+        method: "POST", // o "PUT" si prefieres
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          viaje_id: requestId,
+          nuevo_precio: newPrice,
+        }),
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        // Actualiza localmente
+        setRideRequests((prev) =>
+          prev.map((request) =>
+            request.id === requestId ? { ...request, proposedPrice: newPrice } : request
+          )
+        )
+        Alert.alert("Contrapropuesta enviada", `Has propuesto $${newPrice.toLocaleString()} COP`)
+      } else {
+        Alert.alert("Error", data.error || "No se pudo actualizar el precio")
+      }
+    } catch (error) {
+      console.error("❌ Error al enviar contrapropuesta:", error)
+      Alert.alert("Error", "Error al conectar con el servidor.")
     }
-    setEditingPrice(null)
-    setCounterOfferPrice("")
   }
+
+  setEditingPrice(null)
+  setCounterOfferPrice("")
+}
+
 
   const acceptRide = (requestId: string) => {
     Alert.alert("Viaje aceptado", "Has aceptado la solicitud de viaje")
@@ -115,15 +141,16 @@ const HomeDriver = () => {
   }
 
   const fetchPendingRides = async () => {
+  const lastId = rideRequests[0]?.id || 0
+
   try {
-    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes")
+    const response = await fetch(`https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&lastId=${lastId}`)
     const data = await response.json()
 
-    if (response.ok && data.viajes) {
-      // Mapeamos los datos del backend al formato esperado en tu interfaz
+    if (response.ok && data.viajes?.length) {
       const formattedRides: RideRequest[] = data.viajes.map((viaje: any) => ({
         id: viaje.id.toString(),
-        passengerName: "Pasajera", // Aquí puedes ajustar si luego tienes nombres
+        passengerName: viaje.pasajero_nombre.split(" ")[0], // solo el primer nombre
         pickupAddress: viaje.ubicacionActual,
         pickupNeighborhood: viaje.barrioActual,
         pickupZone: viaje.zonaActual,
@@ -134,17 +161,25 @@ const HomeDriver = () => {
         passenger: {
           phone: "N/A",
           whatsapp: "N/A",
-          photo: "https://i.pravatar.cc/150?img=47", // puedes cambiar esto por un campo real
+          photo: "https://i.pravatar.cc/150?img=47",
         }
       }))
-      setRideRequests(formattedRides)
-    } else {
-      console.error("❌ Error de respuesta de la API:", data)
+      
+      setRideRequests((prev) => [...formattedRides, ...prev]) // agrega los nuevos primero
     }
   } catch (error) {
     console.error("❌ Error al conectar con la API:", error)
   }
 }
+
+useEffect(() => {
+  const interval = setInterval(() => {
+    fetchPendingRides()
+  }, 5000)
+
+  return () => clearInterval(interval)
+}, [rideRequests])
+
 
 
   useFocusEffect(
