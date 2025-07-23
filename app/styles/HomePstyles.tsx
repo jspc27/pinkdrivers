@@ -3,6 +3,7 @@ import { Dimensions, Platform, StyleSheet } from "react-native"
 const { width, height } = Dimensions.get("window")
 
 const styles = StyleSheet.create({
+  // ... (all existing styles)
   container: {
     flex: 1,
   },
@@ -36,12 +37,256 @@ const styles = StyleSheet.create({
     zIndex: 5,
     minHeight: 140,
   },
-  footerWithKeyboard: {
-    paddingBottom: 15,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    backgroundColor: "rgba(255, 255, 255, 1)",
+
+  // UPDATED STYLES FOR ACCEPTED TRIP VIEW - DiDi Style
+  acceptedTripContainer: {
+    flex: 1,
+    paddingVertical: 20,
   },
+
+  acceptedTripHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 25,
+    paddingHorizontal: 5,
+  },
+
+  acceptedTripTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#333",
+    flex: 1,
+  },
+
+  tripStatusBadge: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+
+  tripStatusText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  driverDetailCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  driverDetailInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+
+  driverNameLarge: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 8,
+  },
+
+  // NEW STYLES FOR VEHICLE INFO
+  vehicleInfo: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+    marginBottom: 4,
+    textTransform: "capitalize",
+  },
+
+  vehicleDetails: {
+    fontSize: 14,
+    color: "#888",
+    marginBottom: 2,
+  },
+
+  callDriverButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF69B4",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+    alignSelf: "flex-start",
+    marginTop: 12,
+  },
+
+  callDriverButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  tripRouteDetailCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  tripRoutePoint: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+
+  tripRoutePointDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    marginRight: 16,
+    marginTop: 4,
+  },
+
+  tripDestinationDot: {
+    backgroundColor: "#FF69B4",
+  },
+
+  tripRoutePointInfo: {
+    flex: 1,
+  },
+
+  tripRoutePointLabel: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+
+  tripRoutePointAddress: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+
+  tripRoutePointNeighborhood: {
+    fontSize: 14,
+    color: "#888",
+    marginBottom: 2,
+  },
+
+  tripRouteReference: {
+    fontSize: 12,
+    color: "#FF69B4",
+    fontStyle: "italic",
+  },
+
+  tripRouteLine: {
+    width: 2,
+    height: 30,
+    backgroundColor: "#ddd",
+    marginLeft: 5,
+    marginVertical: 10,
+  },
+
+  tripPriceDetailCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  tripPriceDetailLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+  },
+
+  tripPriceDetailAmount: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#FF69B4",
+    marginBottom: 8,
+  },
+
+  tripVehicleType: {
+    fontSize: 14,
+    color: "#888",
+    textTransform: "capitalize",
+  },
+
+  tripActionButtons: {
+    marginTop: 10,
+  },
+
+  // UPDATED: Single cancel button that takes full width
+  cancelTripButtonFull: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#FF5722",
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+
+  cancelTripButtonText: {
+    color: "#FF5722",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // Keep existing styles for backward compatibility
+  cancelTripButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#FF5722",
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+
+  completeTripButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#4CAF50",
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+
+  completeTripButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // ... (rest of existing styles)
   input: {
     width: "100%",
     height: 50,
@@ -200,7 +445,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffb6c1",
     shadowOpacity: 0.1,
   },
-  // Nuevos estilos para el modal estilo DiDi
   modalOverlay: {
     position: "absolute",
     top: 0,
@@ -301,13 +545,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffb6c1",
     shadowOpacity: 0.1,
   },
-
-  // Nuevos estilos para el estado de espera
+  pickerContainer: {
+    justifyContent: "center",
+    paddingHorizontal: 0,
+  },
+  picker: {
+    height: 55,
+    width: "100%",
+    color: "#333",
+  },
   waitingContainer: {
     flex: 1,
     backgroundColor: "#fff",
   },
-
   waitingHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -317,7 +567,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
-
   waitingTitle: {
     fontSize: 20,
     fontWeight: "bold",
@@ -325,22 +574,18 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-
   cancelButton: {
     padding: 5,
   },
-
   waitingContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
   },
-
   loadingIndicator: {
     marginBottom: 30,
   },
-
   waitingMessage: {
     fontSize: 18,
     fontWeight: "600",
@@ -348,7 +593,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
   },
-
   waitingSubMessage: {
     fontSize: 14,
     color: "#666",
@@ -356,7 +600,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     lineHeight: 20,
   },
-
   cancelSearchButton: {
     backgroundColor: "#f0f0f0",
     paddingHorizontal: 30,
@@ -365,19 +608,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
   },
-
   cancelSearchButtonText: {
     color: "#666",
     fontSize: 16,
     fontWeight: "500",
   },
-
   buttonLoadingContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  // Estilos para contraoferta
   contraofertaCard: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -446,9 +686,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-
-
- 
 })
 
 export default styles

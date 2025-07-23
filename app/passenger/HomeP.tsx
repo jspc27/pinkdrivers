@@ -1,7 +1,7 @@
 "use client"
-
 import { FontAwesome, FontAwesome5 } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { Picker } from "@react-native-picker/picker"
 import { LinearGradient } from "expo-linear-gradient"
 import * as Location from "expo-location"
 import { router } from "expo-router"
@@ -16,6 +16,7 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StatusBar,
@@ -26,6 +27,7 @@ import {
 } from "react-native"
 import MapView, { Marker, Polyline } from "react-native-maps"
 import styles from "../styles/HomePstyles"
+
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window")
 
 interface ContraofertaData {
@@ -33,6 +35,27 @@ interface ContraofertaData {
   valorPersonalizado: string
   conductora_nombre: string
   vehiculo_placa: string
+  vehiculo_color: string
+}
+
+interface AcceptedTripData {
+  id: number
+  ubicacionActual: string
+  barrioActual: string
+  zonaActual: string
+  ciudadActual: string
+  destinoDireccion: string
+  destinoBarrio: string
+  destinoZona: string
+  puntoReferencia: string
+  valorPersonalizado: number
+  selectedVehicle: string
+  estado: string
+  fecha_creacion: string
+  conductora_nombre: string
+  conductora_telefono: string
+  vehiculo_placa?: string
+  vehiculo_color?: string
 }
 
 const HomeP = () => {
@@ -60,12 +83,17 @@ const HomeP = () => {
   const [showContraoferta, setShowContraoferta] = useState(false)
   const [isProcessingResponse, setIsProcessingResponse] = useState(false)
 
+  // New state for accepted trip
+  const [acceptedTrip, setAcceptedTrip] = useState<AcceptedTripData | null>(null)
+  const [isLoadingAcceptedTrip, setIsLoadingAcceptedTrip] = useState(false)
+
   const [region, setRegion] = useState({
     latitude: 3.4516,
     longitude: -76.5319,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   })
+
   const [selectedVehicle, setSelectedVehicle] = useState("")
   const [routeDistance, setRouteDistance] = useState<number | null>(null)
   const [priceEstimate, setPriceEstimate] = useState<number | null>(null)
@@ -81,17 +109,24 @@ const HomeP = () => {
   // Referencias para los campos del formulario
   const ubicacionActualRef = useRef<TextInput>(null)
   const barrioActualRef = useRef<TextInput>(null)
-  const zonaActualRef = useRef<TextInput>(null)
   const ciudadActualRef = useRef<TextInput>(null)
   const destinoDireccionRef = useRef<TextInput>(null)
   const destinoBarrioRef = useRef<TextInput>(null)
-  const destinoZonaRef = useRef<TextInput>(null)
   const referenciaRef = useRef<TextInput>(null)
   const precioRef = useRef<TextInput>(null)
 
   // Estado para el usuario logueado
   const [usuarioId, setUsuarioId] = useState<number | null>(null)
   const [usuarioData, setUsuarioData] = useState<any>(null)
+
+  // Opciones de zona
+  const zonasDisponibles = [
+    { label: "Seleccionar zona", value: "" },
+    { label: "Norte", value: "Norte" },
+    { label: "Sur", value: "Sur" },
+    { label: "Oriente", value: "Oriente" },
+    { label: "Occidente", value: "Occidente" },
+  ]
 
   // Función para decodificar JWT
   const decodeJWT = (token: string) => {
@@ -119,13 +154,13 @@ const HomeP = () => {
     return "Occidente"
   }
 
-  // Función para consultar contraofertas usando el controlador PHP
- const consultarContraoferta = async () => {
+ const consultarViajeAceptado = async () => {
   try {
+    setIsLoadingAcceptedTrip(true)
     const token = await AsyncStorage.getItem("token")
-    console.log("🟡 Token usado:", token)
+    console.log("🟡 Consultando viaje aceptado...")
 
-    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta", {
+    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -134,29 +169,275 @@ const HomeP = () => {
     })
 
     const data = await response.json()
-    console.log("🟡 Respuesta cruda:", data)
+    console.log("🟡 Respuesta viaje aceptado:", data)
 
-    if (response.ok && data.success && data.data) {
-      console.log("✅ Contraoferta recibida:", data.data)
-      setContraofertaData(data.data)
-      setShowContraoferta(true)
+    // ✅ Si hay viaje aceptado o finalizado
+    if (response.ok && (data.viaje_aceptado || data.viaje_finalizado)) {
+
+      // 🔥 AQUÍ ESTÁ EL FIX CLAVE: Solo mostrar alert si ANTES tenías un viaje aceptado
+      if (data.viaje_finalizado) {
+        console.log("✅ Viaje finalizado encontrado")
+        
+        // Solo mostrar alert si:
+        // 1. Ya había un viaje aceptado anteriormente (acceptedTrip existe)
+        // 2. Y es el mismo viaje que ahora aparece como finalizado
+        if (acceptedTrip && acceptedTrip.id === data.viaje_finalizado.id) {
+          console.log("🎉 El viaje actual fue finalizado por la conductora")
+          const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
+          Alert.alert(
+            "¡Viaje finalizado!",
+            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} COP\n\n¡Gracias por usar Pink Drivers!`,
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  setAcceptedTrip(null)
+                  setIsWaitingForDriver(false)
+                  setShowContraoferta(false)
+                  setContraofertaData(null)
+                  console.log("🎉 Viaje completado exitosamente")
+                }
+              }
+            ]
+          )
+        } else {
+          // Si es un viaje finalizado pero no era el que tenías aceptado, 
+          // simplemente limpiar estados sin mostrar alert
+          console.log("ℹ️ Viaje finalizado encontrado pero no era el actual, limpiando estados")
+          setAcceptedTrip(null)
+          setIsWaitingForDriver(false)
+          setShowContraoferta(false)
+          setContraofertaData(null)
+        }
+        return
+      }
+
+      // ✅ Si el viaje está cancelado
+      if (data.viaje_aceptado && data.viaje_aceptado.estado === 'cancelado') {
+        console.log("⚠️ El viaje ha sido cancelado")
+        Alert.alert(
+          "Viaje cancelado",
+          "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setAcceptedTrip(null)
+                setIsWaitingForDriver(false)
+                setShowContraoferta(false)
+                setContraofertaData(null)
+              }
+            }
+          ]
+        )
+        return
+      }
+
+      // ✅ Si hay un viaje aceptado (activo)
+      if (data.viaje_aceptado) {
+        console.log("✅ Viaje aceptado encontrado:", data.viaje_aceptado.id)
+        setAcceptedTrip(data.viaje_aceptado)
+        setIsWaitingForDriver(false)
+        setShowContraoferta(false)
+        setContraofertaData(null)
+      }
+
     } else {
-      console.log("ℹ️ No hay contraofertas disponibles:", data.message)
-      setContraofertaData(null)
-      setShowContraoferta(false)
+      console.log("ℹ️ No hay viaje aceptado:", data.message)
+
+      // Si antes había un viaje aceptado pero ya no hay nada → fue cancelado
+      if (acceptedTrip && !data.viaje_aceptado && !data.viaje_finalizado) {
+        console.log("⚠️ El viaje anterior desapareció - posiblemente cancelado")
+        Alert.alert(
+          "Viaje cancelado",
+          "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setAcceptedTrip(null)
+                setIsWaitingForDriver(false)
+                setShowContraoferta(false)
+                setContraofertaData(null)
+              }
+            }
+          ]
+        )
+      } else {
+        // No había viaje anterior, simplemente limpiar
+        setAcceptedTrip(null)
+      }
     }
+
   } catch (error) {
-    console.error("❌ Error al consultar contraoferta:", error)
-    setContraofertaData(null)
-    setShowContraoferta(false)
+    console.error("❌ Error al consultar viaje aceptado:", error)
+    setAcceptedTrip(null)
+  } finally {
+    setIsLoadingAcceptedTrip(false)
   }
 }
 
 
+// IMPORTANTE: También necesitas agregar un polling continuo para detectar cancelaciones
+// Modifica el useEffect del polling:
+
+useEffect(() => {
+  let intervalId: number
+
+  // NUEVO: Polling continuo cuando hay un viaje aceptado para detectar cancelaciones
+  if (acceptedTrip) {
+    console.log("🔄 Iniciando polling para viaje aceptado")
+    consultarViajeAceptado()
+    
+    intervalId = setInterval(() => {
+      consultarViajeAceptado()
+    }, 3000) // Cada 3 segundos para detectar cancelaciones rápidamente
+    
+  } else if (isWaitingForDriver && !showContraoferta) {
+    // Check for counter-offers first
+    consultarContraoferta()
+    // Then check for accepted trips
+    consultarViajeAceptado()
+
+    intervalId = setInterval(() => {
+      consultarContraoferta()
+      consultarViajeAceptado()
+    }, 5000)
+    
+  } else if (!isWaitingForDriver && !acceptedTrip) {
+    // Check for accepted trips on app load
+    consultarViajeAceptado()
+  }
+
+  return () => {
+    if (intervalId) {
+      clearInterval(intervalId)
+      console.log("🛑 Polling detenido")
+    }
+  }
+}, [isWaitingForDriver, showContraoferta, acceptedTrip])
+  // Function to cancel accepted trip
+const cancelarViajeAceptado = async () => {
+  if (!acceptedTrip) return;
+  
+  Alert.alert(
+    "Cancelar viaje", 
+    "¿Estás segura de que quieres cancelar este viaje?", 
+    [
+      { text: "No", style: "cancel" },
+      {
+        text: "Sí, cancelar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            // Mostrar loading
+            setIsLoadingAcceptedTrip(true);
+            
+            const token = await AsyncStorage.getItem("token");
+            const response = await fetch(
+              "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  viaje_id: acceptedTrip.id
+                }),
+              }
+            );
+
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+              // Limpiar el estado del viaje aceptado
+              setAcceptedTrip(null);
+              setIsLoadingAcceptedTrip(false);
+              
+              Alert.alert(
+                "Viaje cancelado", 
+                "El viaje ha sido cancelado exitosamente",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      // Resetear otros estados si es necesario
+                      setIsWaitingForDriver(false);
+                      setShowContraoferta(false);
+                      setContraofertaData(null);
+                    }
+                  }
+                ]
+              );
+              
+              console.log("✅ Viaje cancelado exitosamente");
+              
+            } else {
+              setIsLoadingAcceptedTrip(false);
+              Alert.alert(
+                "Error", 
+                data.error || "No se pudo cancelar el viaje. Inténtalo de nuevo."
+              );
+              console.error("❌ Error al cancelar viaje:", data.error);
+            }
+            
+          } catch (error) {
+            setIsLoadingAcceptedTrip(false);
+            console.error("❌ Error de conexión al cancelar viaje:", error);
+            Alert.alert(
+              "Error de conexión", 
+              "No se pudo conectar con el servidor. Verifica tu conexión a internet."
+            );
+          }
+        },
+      },
+    ]
+  );
+};
+
+  // Function to call driver
+  const llamarConductora = (telefono: string) => {
+    if (telefono && telefono !== "N/A") {
+      Linking.openURL(`tel:${telefono.replace(/\s/g, "")}`)
+    } else {
+      Alert.alert("Error", "Número de teléfono no disponible")
+    }
+  }
+
+  // Función para consultar contraofertas usando el controlador PHP
+  const consultarContraoferta = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token")
+      console.log("🟡 Token usado:", token)
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+      const data = await response.json()
+      console.log("🟡 Respuesta cruda:", data)
+      if (response.ok && data.success && data.data) {
+        console.log("✅ Contraoferta recibida:", data.data)
+        setContraofertaData(data.data)
+        setShowContraoferta(true)
+      } else {
+        console.log("ℹ️ No hay contraofertas disponibles:", data.message)
+        setContraofertaData(null)
+        setShowContraoferta(false)
+      }
+    } catch (error) {
+      console.error("❌ Error al consultar contraoferta:", error)
+      setContraofertaData(null)
+      setShowContraoferta(false)
+    }
+  }
+
   // Función para aceptar contraoferta
   const aceptarContraoferta = async () => {
     if (!contraofertaData) return
-
     setIsProcessingResponse(true)
     try {
       const token = await AsyncStorage.getItem("token")
@@ -171,9 +452,7 @@ const HomeP = () => {
           aceptado: true,
         }),
       })
-
       const data = await response.json()
-
       if (response.ok && data.success) {
         Alert.alert(
           "¡Contraoferta aceptada!",
@@ -186,6 +465,10 @@ const HomeP = () => {
                 setContraofertaData(null)
                 setIsWaitingForDriver(false)
                 closeModal()
+                // Check for accepted trip after accepting counter-offer
+                setTimeout(() => {
+                  consultarViajeAceptado()
+                }, 1000)
               },
             },
           ],
@@ -204,7 +487,6 @@ const HomeP = () => {
   // Función para rechazar contraoferta
   const rechazarContraoferta = async () => {
     if (!contraofertaData) return
-
     setIsProcessingResponse(true)
     try {
       const token = await AsyncStorage.getItem("token")
@@ -219,9 +501,7 @@ const HomeP = () => {
           aceptado: false,
         }),
       })
-
       const data = await response.json()
-
       if (response.ok && data.success) {
         Alert.alert(
           "Contraoferta rechazada",
@@ -268,7 +548,6 @@ const HomeP = () => {
         },
       )
     }
-
     const obtenerDireccion = async (lat: number, lng: number) => {
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
@@ -303,22 +582,26 @@ const HomeP = () => {
         }
       }
     }
-
     obtenerUbicacion()
   }, [ubicacionActual, barrioActual, zonaActual, ciudadActual])
 
-  // Polling para consultar contraofertas cuando se está esperando conductora
+  // Polling for counter-offers and accepted trips
   useEffect(() => {
     let intervalId: number
 
-    if (isWaitingForDriver && !showContraoferta) {
-      // Consultar inmediatamente
+    if (isWaitingForDriver && !showContraoferta && !acceptedTrip) {
+      // Check for counter-offers first
       consultarContraoferta()
+      // Then check for accepted trips
+      consultarViajeAceptado()
 
-      // Luego consultar cada 5 segundos
       intervalId = setInterval(() => {
         consultarContraoferta()
-      },5000 )
+        consultarViajeAceptado()
+      }, 5000)
+    } else if (!isWaitingForDriver && !acceptedTrip) {
+      // Check for accepted trips on app load
+      consultarViajeAceptado()
     }
 
     return () => {
@@ -326,7 +609,7 @@ const HomeP = () => {
         clearInterval(intervalId)
       }
     }
-  }, [isWaitingForDriver, showContraoferta])
+  }, [isWaitingForDriver, showContraoferta, acceptedTrip])
 
   // Keyboard event listeners
   useEffect(() => {
@@ -335,13 +618,11 @@ const HomeP = () => {
       setKeyboardHeight(height)
       setIsKeyboardVisible(true)
     })
-
     const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
       setIsKeyboardVisible(false)
       setActiveField(null)
       setKeyboardHeight(0)
     })
-
     return () => {
       keyboardDidShowListener?.remove()
       keyboardDidHideListener?.remove()
@@ -405,13 +686,11 @@ const HomeP = () => {
     const obtenerUsuario = async () => {
       try {
         const token = await AsyncStorage.getItem("token")
-
         if (!token) {
           console.warn("No se encontró el token")
           router.push("/passenger/LoginP")
           return
         }
-
         const decodedToken = decodeJWT(token)
         if (decodedToken && decodedToken.id) {
           setUsuarioId(decodedToken.id)
@@ -419,7 +698,6 @@ const HomeP = () => {
           console.log("✅ Usuario obtenido del token:", decodedToken)
           return
         }
-
         const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
           method: "GET",
           headers: {
@@ -427,7 +705,6 @@ const HomeP = () => {
             "Content-Type": "application/json",
           },
         })
-
         if (response.ok) {
           const data = await response.json()
           if (data && data.id) {
@@ -448,11 +725,8 @@ const HomeP = () => {
         console.error("Error al obtener el usuario:", error)
       }
     }
-
     obtenerUsuario()
   }, [])
-
-  
 
   const toggleMenu = () => {
     setMenuVisible(!menuVisible)
@@ -525,17 +799,13 @@ const HomeP = () => {
       router.push("/passenger/LoginP")
       return
     }
-
     if (!isFormComplete()) {
       Alert.alert("Formulario incompleto", "Por favor completa todos los campos")
       return
     }
-
     setIsSubmittingRequest(true)
-
     try {
       const baseUrl = "https://www.pinkdrivers.com/api-rest/index.php?action=viajes"
-
       const viajeData = {
         ubicacionActual,
         barrioActual,
@@ -549,9 +819,7 @@ const HomeP = () => {
         valorPersonalizado: Number.parseFloat(valorPersonalizado),
         usuario_id: usuarioId,
       }
-
       console.log("📤 Enviando solicitud de viaje:", viajeData)
-
       const res = await fetch(baseUrl, {
         method: "POST",
         headers: {
@@ -560,10 +828,8 @@ const HomeP = () => {
         },
         body: JSON.stringify(viajeData),
       })
-
       const json = await res.json()
       console.log("📥 Respuesta del servidor:", json)
-
       if (res.ok) {
         setIsSubmittingRequest(false)
         setIsWaitingForDriver(true)
@@ -593,11 +859,117 @@ const HomeP = () => {
     }, 500)
   }
 
-  const cancelarBusqueda = () => {
-    setIsWaitingForDriver(false)
-    setShowContraoferta(false)
-    setContraofertaData(null)
-    closeModal()
+  const cancelarBusqueda = async () => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      // No se envía viaje_id: se cancela automáticamente el último con estado 'pendiente'
+      body: JSON.stringify({})
+    });
+
+    const data = await response.json();
+    console.log("🟡 Respuesta al cancelar búsqueda:", data);
+
+    if (response.ok && data.success) {
+      Alert.alert("Búsqueda cancelada", "Tu búsqueda fue cancelada exitosamente.");
+      setIsWaitingForDriver(false);
+      setAcceptedTrip(null);
+      setShowContraoferta(false);
+      setContraofertaData(null);
+    } else {
+      Alert.alert("Error", data.error || "No se pudo cancelar la búsqueda.");
+    }
+  } catch (error) {
+    console.error("❌ Error al cancelar búsqueda:", error);
+    Alert.alert("Error", "Ocurrió un error al cancelar la búsqueda.");
+  }
+};
+
+
+  // Render accepted trip detail view - DiDi style
+  const renderAcceptedTripDetail = () => {
+    if (!acceptedTrip) return null
+
+    // Extract first name only
+    const firstName = acceptedTrip.conductora_nombre.split(" ")[0]
+
+    return (
+      <View style={styles.acceptedTripContainer}>
+        <View style={styles.acceptedTripHeader}>
+          <Text style={styles.acceptedTripTitle}>¡Tu viaje fue aceptado!</Text>
+          <View style={styles.tripStatusBadge}>
+            <Text style={styles.tripStatusText}>Confirmado</Text>
+          </View>
+        </View>
+
+        <View style={styles.driverDetailCard}>
+          <FontAwesome5 name="user-circle" size={80} color="#FF69B4" />
+          <View style={styles.driverDetailInfo}>
+            <Text style={styles.driverNameLarge}>{firstName}</Text>
+            <Text style={styles.vehicleInfo}>{acceptedTrip.selectedVehicle}</Text>
+            {acceptedTrip.vehiculo_placa && (
+              <Text style={styles.vehicleDetails}>Placas: {acceptedTrip.vehiculo_placa}</Text>
+            )}
+            {acceptedTrip.vehiculo_color && (
+              <Text style={styles.vehicleDetails}>Color: {acceptedTrip.vehiculo_color}</Text>
+            )}
+            <TouchableOpacity
+              style={styles.callDriverButton}
+              onPress={() => llamarConductora(acceptedTrip.conductora_telefono)}
+            >
+              <FontAwesome name="phone" size={16} color="#fff" />
+              <Text style={styles.callDriverButtonText}>Llamar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.tripRouteDetailCard}>
+          <View style={styles.tripRoutePoint}>
+            <View style={styles.tripRoutePointDot} />
+            <View style={styles.tripRoutePointInfo}>
+              <Text style={styles.tripRoutePointLabel}>ORIGEN</Text>
+              <Text style={styles.tripRoutePointAddress}>{acceptedTrip.ubicacionActual}</Text>
+              <Text style={styles.tripRoutePointNeighborhood}>
+                {acceptedTrip.barrioActual} • {acceptedTrip.zonaActual}
+              </Text>
+              <Text style={styles.tripRouteReference}>Ref: {acceptedTrip.puntoReferencia}</Text>
+            </View>
+          </View>
+
+          <View style={styles.tripRouteLine} />
+
+          <View style={styles.tripRoutePoint}>
+            <View style={[styles.tripRoutePointDot, styles.tripDestinationDot]} />
+            <View style={styles.tripRoutePointInfo}>
+              <Text style={styles.tripRoutePointLabel}>DESTINO</Text>
+              <Text style={styles.tripRoutePointAddress}>{acceptedTrip.destinoDireccion}</Text>
+              <Text style={styles.tripRoutePointNeighborhood}>
+                {acceptedTrip.destinoBarrio} • {acceptedTrip.destinoZona}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.tripPriceDetailCard}>
+          <Text style={styles.tripPriceDetailLabel}>Precio acordado</Text>
+          <Text style={styles.tripPriceDetailAmount}>${acceptedTrip.valorPersonalizado.toLocaleString()} COP</Text>
+          <Text style={styles.tripVehicleType}>Vehículo: {acceptedTrip.selectedVehicle}</Text>
+        </View>
+
+        <View style={styles.tripActionButtons}>
+          <TouchableOpacity style={styles.cancelTripButtonFull} onPress={cancelarViajeAceptado}>
+            <FontAwesome name="times" size={16} color="#FF5722" />
+            <Text style={styles.cancelTripButtonText}>Cancelar viaje</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
   }
 
   if (!usuarioId) {
@@ -612,10 +984,42 @@ const HomeP = () => {
     )
   }
 
+  // If there's an accepted trip, show it instead of the normal interface
+  if (acceptedTrip) {
+    return (
+      <LinearGradient colors={["#CF5BA9", "#B33F8D"]} style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#FF69B4" />
+
+        <View style={[styles.mapContainer, { height: screenHeight * 0.4 }]}>
+          <MapView style={styles.map} region={region}>
+            <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
+            {destinoCoords && <Marker coordinate={destinoCoords} pinColor="#FF1493" />}
+            {routeCoordinates.length > 0 && (
+              <Polyline coordinates={routeCoordinates} strokeWidth={4} strokeColor="#FF1493" />
+            )}
+          </MapView>
+        </View>
+
+        <View style={styles.avatarMenuContainer}>
+          <TouchableOpacity
+            onPress={() => navigateTo("/passenger/ProfileP")}
+            style={styles.avatarButtonContainer}
+            activeOpacity={0.8}
+          >
+            <Image source={{ uri: "https://i.pravatar.cc/150?img=47" }} style={styles.avatarSmall} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.footer, { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, flex: 1 }]}>
+          <ScrollView showsVerticalScrollIndicator={false}>{renderAcceptedTripDetail()}</ScrollView>
+        </View>
+      </LinearGradient>
+    )
+  }
+
   return (
     <LinearGradient colors={["#CF5BA9", "#B33F8D"]} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#FF69B4" />
-
       <View style={[styles.mapContainer, isKeyboardVisible && styles.mapWithKeyboard]}>
         <MapView style={styles.map} region={region}>
           <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
@@ -644,7 +1048,6 @@ const HomeP = () => {
             <Text style={{ color: ubicacionActual ? "#333" : "#666", fontSize: 15 }}>{getUbicacionActualText()}</Text>
           </View>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={openModal}>
           <View style={[styles.input, { justifyContent: "center" }]}>
             <Text style={{ color: destinoDireccion ? "#333" : "#666", fontSize: 15 }}>
@@ -665,7 +1068,6 @@ const HomeP = () => {
               },
             ]}
           ></Animated.View>
-
           <Animated.View
             style={[
               styles.modalContainer,
@@ -683,23 +1085,18 @@ const HomeP = () => {
                     <FontAwesome name="times" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
-
                 <View style={styles.waitingContent}>
                   <View style={styles.contraofertaCard}>
                     <FontAwesome5 name="user-circle" size={60} color="#FF69B4" style={{ marginBottom: 20 }} />
-
                     <Text style={styles.contraofertaDriverName}>
                       {contraofertaData.conductora_nombre.split(" ")[0]}
                     </Text>
-
                     <Text style={styles.contraofertaPlate}>Placas: {contraofertaData.vehiculo_placa}</Text>
-
+                    <Text style={styles.contraofertaPlate}>Color: {contraofertaData.vehiculo_color}</Text>
                     <Text style={styles.contraofertaMessage}>Te propuso un precio de:</Text>
-
                     <Text style={styles.contraofertaPrice}>
                       ${Number(contraofertaData.valorPersonalizado).toLocaleString()} COP
                     </Text>
-
                     <View style={styles.contraofertaButtons}>
                       <TouchableOpacity
                         style={[styles.contraofertaButton, styles.rejectButton]}
@@ -715,7 +1112,6 @@ const HomeP = () => {
                           </>
                         )}
                       </TouchableOpacity>
-
                       <TouchableOpacity
                         style={[styles.contraofertaButton, styles.acceptButton]}
                         onPress={aceptarContraoferta}
@@ -743,12 +1139,10 @@ const HomeP = () => {
                     <FontAwesome name="times" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
-
                 <View style={styles.waitingContent}>
                   <ActivityIndicator size="large" color="#FF69B4" style={styles.loadingIndicator} />
                   <Text style={styles.waitingMessage}>Buscando una conductora disponible...</Text>
                   <Text style={styles.waitingSubMessage}>Te notificaremos cuando encontremos una conductora</Text>
-
                   <TouchableOpacity style={styles.cancelSearchButton} onPress={cancelarBusqueda}>
                     <Text style={styles.cancelSearchButtonText}>Cancelar búsqueda</Text>
                   </TouchableOpacity>
@@ -764,7 +1158,6 @@ const HomeP = () => {
                     <FontAwesome name="chevron-up" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
-
                 {/* Contenido del modal */}
                 <KeyboardAvoidingView
                   behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -781,7 +1174,6 @@ const HomeP = () => {
                   >
                     {/* SECCIÓN DE UBICACIÓN ACTUAL */}
                     <Text style={[styles.sectionTitle, { marginTop: 10, marginBottom: 10 }]}>Ubicación actual</Text>
-
                     <TextInput
                       ref={ubicacionActualRef}
                       style={[styles.modalInput, activeField === "ubicacionActual" && styles.modalInputFocused]}
@@ -794,7 +1186,6 @@ const HomeP = () => {
                       returnKeyType="next"
                       onSubmitEditing={() => barrioActualRef.current?.focus()}
                     />
-
                     <TextInput
                       ref={barrioActualRef}
                       style={[styles.modalInput, activeField === "barrioActual" && styles.modalInputFocused]}
@@ -805,21 +1196,21 @@ const HomeP = () => {
                       onFocus={() => setActiveField("barrioActual")}
                       onBlur={() => setActiveField(null)}
                       returnKeyType="next"
-                      onSubmitEditing={() => zonaActualRef.current?.focus()}
+                      onSubmitEditing={() => ciudadActualRef.current?.focus()}
                     />
 
-                    <TextInput
-                      ref={zonaActualRef}
-                      style={[styles.modalInput, activeField === "zonaActual" && styles.modalInputFocused]}
-                      placeholder="Zona actual (Norte, Sur, Oriente, Occidente)"
-                      placeholderTextColor="#666"
-                      value={zonaActual}
-                      onChangeText={setZonaActual}
-                      onFocus={() => setActiveField("zonaActual")}
-                      onBlur={() => setActiveField(null)}
-                      returnKeyType="next"
-                      onSubmitEditing={() => destinoDireccionRef.current?.focus()}
-                    />
+                    {/* Picker para zona actual */}
+                    <View style={[styles.modalInput, styles.pickerContainer]}>
+                      <Picker
+                        selectedValue={zonaActual}
+                        onValueChange={(itemValue) => setZonaActual(itemValue)}
+                        style={styles.picker}
+                      >
+                        {zonasDisponibles.map((zona) => (
+                          <Picker.Item key={zona.value} label={zona.label} value={zona.value} />
+                        ))}
+                      </Picker>
+                    </View>
 
                     <TextInput
                       ref={ciudadActualRef}
@@ -836,7 +1227,6 @@ const HomeP = () => {
 
                     {/* SECCIÓN DE DESTINO */}
                     <Text style={[styles.sectionTitle, { marginTop: 20, marginBottom: 10 }]}>Destino</Text>
-
                     <TextInput
                       ref={destinoDireccionRef}
                       style={[styles.modalInput, activeField === "destinoDireccion" && styles.modalInputFocused]}
@@ -849,7 +1239,6 @@ const HomeP = () => {
                       returnKeyType="next"
                       onSubmitEditing={() => destinoBarrioRef.current?.focus()}
                     />
-
                     <TextInput
                       ref={destinoBarrioRef}
                       style={[styles.modalInput, activeField === "destinoBarrio" && styles.modalInputFocused]}
@@ -860,21 +1249,21 @@ const HomeP = () => {
                       onFocus={() => setActiveField("destinoBarrio")}
                       onBlur={() => setActiveField(null)}
                       returnKeyType="next"
-                      onSubmitEditing={() => destinoZonaRef.current?.focus()}
-                    />
-
-                    <TextInput
-                      ref={destinoZonaRef}
-                      style={[styles.modalInput, activeField === "destinoZona" && styles.modalInputFocused]}
-                      placeholder="Zona de destino (Norte, Sur, Oriente, Occidente)"
-                      placeholderTextColor="#666"
-                      value={destinoZona}
-                      onChangeText={setDestinoZona}
-                      onFocus={() => setActiveField("destinoZona")}
-                      onBlur={() => setActiveField(null)}
-                      returnKeyType="next"
                       onSubmitEditing={() => referenciaRef.current?.focus()}
                     />
+
+                    {/* Picker para zona de destino */}
+                    <View style={[styles.modalInput, styles.pickerContainer]}>
+                      <Picker
+                        selectedValue={destinoZona}
+                        onValueChange={(itemValue) => setDestinoZona(itemValue)}
+                        style={styles.picker}
+                      >
+                        {zonasDisponibles.map((zona) => (
+                          <Picker.Item key={zona.value} label={zona.label} value={zona.value} />
+                        ))}
+                      </Picker>
+                    </View>
 
                     <TextInput
                       ref={referenciaRef}
