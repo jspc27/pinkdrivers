@@ -80,7 +80,7 @@ const LoginP = () => {
       console.log('Permiso de ubicación otorgado');
     }
 
-    router.push('/passenger/HomeP');
+    router.replace('/passenger/HomeP');
   };
 
   return (
