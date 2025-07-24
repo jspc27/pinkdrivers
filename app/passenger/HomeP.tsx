@@ -154,6 +154,8 @@ const HomeP = () => {
     return "Occidente"
   }
 
+  //CONSULTAR VIAJE ACEPTADO
+
  const consultarViajeAceptado = async () => {
   try {
     setIsLoadingAcceptedTrip(true)
@@ -174,49 +176,39 @@ const HomeP = () => {
     // ✅ Si hay viaje aceptado o finalizado
     if (response.ok && (data.viaje_aceptado || data.viaje_finalizado)) {
 
-      // 🔥 AQUÍ ESTÁ EL FIX CLAVE: Solo mostrar alert si ANTES tenías un viaje aceptado
+      // 🔥 MANEJO DE VIAJES FINALIZADOS
       if (data.viaje_finalizado) {
         console.log("✅ Viaje finalizado encontrado")
         
-        // Solo mostrar alert si:
-        // 1. Ya había un viaje aceptado anteriormente (acceptedTrip existe)
-        // 2. Y es el mismo viaje que ahora aparece como finalizado
-        if (acceptedTrip && acceptedTrip.id === data.viaje_finalizado.id) {
-          console.log("🎉 El viaje actual fue finalizado por la conductora")
-          const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
-          Alert.alert(
-            "¡Viaje finalizado!",
-            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} COP\n\n¡Gracias por usar Pink Drivers!`,
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  setAcceptedTrip(null)
-                  setIsWaitingForDriver(false)
-                  setShowContraoferta(false)
-                  setContraofertaData(null)
-                  console.log("🎉 Viaje completado exitosamente")
-                }
+        // Mostrar alert de finalización SIEMPRE que haya un viaje finalizado
+        // Sin importar si había un viaje aceptado previo o no
+        const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
+        
+        Alert.alert(
+          "¡Viaje finalizado!", // 🎉 TÍTULO CORRECTO
+          `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} COP\n\n¡Gracias por usar Pink Drivers!`,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Limpiar todos los estados relacionados con el viaje
+                setAcceptedTrip(null)
+                setIsWaitingForDriver(false)
+                setShowContraoferta(false)
+                setContraofertaData(null)
+                console.log("🎉 Viaje completado exitosamente")
               }
-            ]
-          )
-        } else {
-          // Si es un viaje finalizado pero no era el que tenías aceptado, 
-          // simplemente limpiar estados sin mostrar alert
-          console.log("ℹ️ Viaje finalizado encontrado pero no era el actual, limpiando estados")
-          setAcceptedTrip(null)
-          setIsWaitingForDriver(false)
-          setShowContraoferta(false)
-          setContraofertaData(null)
-        }
-        return
+            }
+          ]
+        )
+        return // Salir de la función después de manejar el viaje finalizado
       }
 
-      // ✅ Si el viaje está cancelado
+      // ✅ Si el viaje está cancelado por la conductora
       if (data.viaje_aceptado && data.viaje_aceptado.estado === 'cancelado') {
-        console.log("⚠️ El viaje ha sido cancelado")
+        console.log("⚠️ El viaje ha sido cancelado por la conductora")
         Alert.alert(
-          "Viaje cancelado",
+          "Viaje cancelado", // 🚫 TÍTULO PARA CANCELACIÓN
           "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
           [
             {
@@ -233,8 +225,8 @@ const HomeP = () => {
         return
       }
 
-      // ✅ Si hay un viaje aceptado (activo)
-      if (data.viaje_aceptado) {
+      // ✅ Si hay un viaje aceptado (activo/en proceso)
+      if (data.viaje_aceptado && data.viaje_aceptado.estado !== 'cancelado') {
         console.log("✅ Viaje aceptado encontrado:", data.viaje_aceptado.id)
         setAcceptedTrip(data.viaje_aceptado)
         setIsWaitingForDriver(false)

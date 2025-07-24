@@ -1,13 +1,11 @@
 "use client"
-
 import { FontAwesome } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LinearGradient } from "expo-linear-gradient"
 import { router, useFocusEffect, type ExternalPathString, type RelativePathString } from "expo-router"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, FlatList, Linking, StatusBar, Switch, Text, TextInput, TouchableOpacity, View } from "react-native"
 import styles from "../styles/HomeDriverPstyles"
-// __DEV__ is available globally in React Native
 
 interface RideRequest {
   id: string
@@ -19,6 +17,8 @@ interface RideRequest {
   destinationNeighborhood: string
   destinationZone: string
   proposedPrice: number
+  counterOfferPrice?: number
+  status: "pending" | "negotiation" | "accepted"
   passenger: {
     phone: string
     whatsapp: string
@@ -33,13 +33,15 @@ const HomeDriver = () => {
   const [counterOfferPrice, setCounterOfferPrice] = useState("")
   const [conductoraId, setConductoraId] = useState<number | null>(null)
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([])
-
-  // Estado para almacenar los viajes rechazados en memoria
   const [rejectedRides, setRejectedRides] = useState<Set<string>>(new Set())
-
-  // New state for accepted ride
   const [acceptedRide, setAcceptedRide] = useState<RideRequest | null>(null)
   const [rideStatus, setRideStatus] = useState<"pending" | "accepted" | "in_progress" | "completed">("pending")
+  const [isScreenFocused, setIsScreenFocused] = useState(true)
+
+  // Referencias para controlar el polling
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const isPollingActiveRef = useRef(false)
+  const lastFetchTimestamp = useRef<number>(0)
 
   const decodeJWT = (token: string) => {
     try {
@@ -58,14 +60,47 @@ const HomeDriver = () => {
     }
   }
 
-  // Función para cargar los viajes rechazados desde AsyncStorage
+  const loadDriverActiveStatus = async () => {
+    try {
+      if (!conductoraId) return false
+      const driverStatusKey = `driver_active_${conductoraId}`
+      const storedStatus = await AsyncStorage.getItem(driverStatusKey)
+      if (storedStatus !== null) {
+        const isActive = JSON.parse(storedStatus)
+        setIsDriverActive(isActive)
+        console.log("✅ Estado de disponibilidad cargado:", isActive ? "Disponible" : "No disponible")
+        return isActive
+      } else {
+        setIsDriverActive(false)
+        console.log("ℹ️ No hay estado previo, iniciando como no disponible")
+        return false
+      }
+    } catch (error) {
+      console.error("❌ Error al cargar estado de disponibilidad:", error)
+      setIsDriverActive(false)
+      return false
+    }
+  }
+
+  const saveDriverActiveStatus = async (status: boolean) => {
+    try {
+      if (!conductoraId) {
+        console.warn("⚠️ No se puede guardar estado sin ID de conductora")
+        return
+      }
+      const driverStatusKey = `driver_active_${conductoraId}`
+      await AsyncStorage.setItem(driverStatusKey, JSON.stringify(status))
+      console.log("✅ Estado de disponibilidad guardado:", status ? "Disponible" : "No disponible")
+    } catch (error) {
+      console.error("❌ Error al guardar estado de disponibilidad:", error)
+    }
+  }
+
   const loadRejectedRides = async () => {
     try {
       if (!conductoraId) return
-
       const rejectedRidesKey = `rejected_rides_${conductoraId}`
       const storedRejectedRides = await AsyncStorage.getItem(rejectedRidesKey)
-
       if (storedRejectedRides) {
         const rejectedArray = JSON.parse(storedRejectedRides)
         setRejectedRides(new Set(rejectedArray))
@@ -76,11 +111,9 @@ const HomeDriver = () => {
     }
   }
 
-  // Función para guardar los viajes rechazados en AsyncStorage
   const saveRejectedRides = async (newRejectedRides: Set<string>) => {
     try {
       if (!conductoraId) return
-
       const rejectedRidesKey = `rejected_rides_${conductoraId}`
       const rejectedArray = Array.from(newRejectedRides)
       await AsyncStorage.setItem(rejectedRidesKey, JSON.stringify(rejectedArray))
@@ -90,35 +123,57 @@ const HomeDriver = () => {
     }
   }
 
+  const cleanupPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+      isPollingActiveRef.current = false
+      console.log("🛑 Polling anterior limpiado")
+    }
+  }
+
   useEffect(() => {
     const obtenerConductoraId = async () => {
-      const token = await AsyncStorage.getItem("token")
-      if (token) {
-        const decoded = decodeJWT(token)
-        if (decoded && decoded.id) {
-          setConductoraId(decoded.id)
-          console.log("✅ ID de conductora:", decoded.id)
-        } else {
-          console.warn("❌ No se pudo decodificar el token.")
+      try {
+        const token = await AsyncStorage.getItem("token")
+        if (token) {
+          const decoded = decodeJWT(token)
+          if (decoded && decoded.id) {
+            setConductoraId(decoded.id)
+            console.log("✅ ID de conductora establecido:", decoded.id)
+          } else {
+            console.warn("❌ No se pudo decodificar el token.")
+          }
         }
+      } catch (error) {
+        console.error("❌ Error al obtener ID de conductora:", error)
       }
     }
-
     obtenerConductoraId()
   }, [])
 
-  // Cargar viajes rechazados cuando se obtiene el ID de la conductora
   useEffect(() => {
     if (conductoraId) {
       loadRejectedRides()
+      loadDriverActiveStatus()
     }
   }, [conductoraId])
 
   const navigateTo = (screen: RelativePathString | ExternalPathString) => {
+    cleanupPolling()
     router.push(screen)
   }
 
-  const toggleDriverActive = () => setIsDriverActive(!isDriverActive)
+  const toggleDriverActive = async () => {
+    const newStatus = !isDriverActive
+    if (!newStatus) {
+      cleanupPolling()
+      setRideRequests([])
+      console.log("🧹 Solicitudes limpiadas al desactivar")
+    }
+    setIsDriverActive(newStatus)
+    await saveDriverActiveStatus(newStatus)
+  }
 
   const openWhatsApp = (whatsapp: string) => {
     Linking.openURL(`whatsapp://send?phone=${whatsapp}`).catch(() => Alert.alert("Error", "No se pudo abrir WhatsApp."))
@@ -135,37 +190,63 @@ const HomeDriver = () => {
 
   const submitCounterOffer = async (requestId: string) => {
     const newPrice = Number.parseInt(counterOfferPrice)
-    if (newPrice && newPrice > 0) {
-      try {
-        const token = await AsyncStorage.getItem("token")
+    if (!newPrice || newPrice <= 0) {
+      Alert.alert("Error", "Por favor ingresa un precio válido.")
+      return
+    }
 
-        const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=crear_contraoferta", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            viaje_id: requestId,
-            nuevo_precio: newPrice,
-          }),
-        })
-
-        const data = await response.json()
-        if (response.ok) {
-          setRideRequests((prev) =>
-            prev.map((request) => (request.id === requestId ? { ...request, proposedPrice: newPrice } : request)),
-          )
-          Alert.alert("Contrapropuesta enviada", `Has propuesto $${newPrice.toLocaleString()} COP`)
-        } else {
-          Alert.alert("Error", data.error || "No se pudo actualizar el precio")
-        }
-      } catch (error) {
-        console.error("❌ Error al enviar contrapropuesta:", error)
-        Alert.alert("Error", "Error al conectar con el servidor.")
+    try {
+      const token = await AsyncStorage.getItem("token")
+      if (!token) {
+        Alert.alert("Error", "Token no encontrado")
+        return
       }
-    } else {
-      Alert.alert("Error", "Faltan datos para enviar la contrapropuesta.")
+
+      console.log("📤 Enviando contrapropuesta:", {
+        viaje_id: requestId,
+        nuevo_precio: newPrice,
+      })
+
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=crear_contraoferta", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          viaje_id: requestId,
+          nuevo_precio: newPrice,
+        }),
+      })
+
+      const data = await response.json()
+      console.log("📥 Respuesta del servidor:", data)
+
+      if (response.ok) {
+        setRideRequests((prev) =>
+          prev.map((request) =>
+            request.id === requestId
+              ? {
+                  ...request,
+                  counterOfferPrice: newPrice,
+                  status: "negotiation" as const,
+                }
+              : request,
+          ),
+        )
+
+        Alert.alert(
+          "Contrapropuesta enviada",
+          `Has propuesto $${newPrice.toLocaleString()} COP. La pasajera será notificada y podrá aceptar o rechazar tu propuesta.`,
+        )
+        console.log("✅ Contrapropuesta enviada exitosamente")
+      } else {
+        console.error("❌ Error del servidor:", data)
+        Alert.alert("Error", data.error || "No se pudo enviar la contrapropuesta")
+      }
+    } catch (error) {
+      console.error("❌ Error al enviar contrapropuesta:", error)
+      Alert.alert("Error", "Error al conectar con el servidor.")
     }
 
     setEditingPrice(null)
@@ -194,12 +275,12 @@ const HomeDriver = () => {
       const data = await response.json()
 
       if (response.ok) {
-        // Find the accepted ride and set it as the active ride
         const acceptedRideData = rideRequests.find((request) => request.id === requestId)
         if (acceptedRideData) {
           setAcceptedRide(acceptedRideData)
           setRideStatus("accepted")
-          setRideRequests([]) // Clear all other requests
+          setRideRequests([])
+          cleanupPolling()
           Alert.alert("¡Éxito!", "Has aceptado el viaje.")
         }
       } else {
@@ -213,24 +294,15 @@ const HomeDriver = () => {
 
   const rejectRide = async (requestId: string) => {
     try {
-      // Agregar el viaje a la lista de rechazados en memoria
       const newRejectedRides = new Set(rejectedRides)
       newRejectedRides.add(requestId)
       setRejectedRides(newRejectedRides)
-
-      // Guardar en AsyncStorage
       await saveRejectedRides(newRejectedRides)
-
-      // Remover de la lista actual
       setRideRequests((prev) => prev.filter((request) => request.id !== requestId))
-
       console.log(`✅ Viaje ${requestId} rechazado y guardado en memoria`)
-
-      // Opcional: Mostrar una confirmación
       Alert.alert("Viaje rechazado", "Esta solicitud no volverá a aparecer para ti.")
     } catch (error) {
       console.error("❌ Error al rechazar viaje:", error)
-      // Aún así remover de la lista actual para que no se quede colgado
       setRideRequests((prev) => prev.filter((request) => request.id !== requestId))
     }
   }
@@ -259,11 +331,8 @@ const HomeDriver = () => {
             const data = await response.json()
 
             if (response.ok && data.success) {
-              // Limpiar el estado del viaje aceptado
               setAcceptedRide(null)
               setRideStatus("pending")
-              setIsDriverActive(true) // Reactivar para nuevas solicitudes
-
               Alert.alert(
                 "¡Viaje finalizado!",
                 `Viaje completado exitosamente. Valor: $${data.valor_final?.toLocaleString()} COP`,
@@ -314,11 +383,8 @@ const HomeDriver = () => {
             const data = await response.json()
 
             if (response.ok && data.success) {
-              // Limpiar el estado del viaje aceptado
               setAcceptedRide(null)
               setRideStatus("pending")
-              setIsDriverActive(true) // Reactivar para nuevas solicitudes
-
               Alert.alert("Viaje cancelado", "El viaje ha sido cancelado. La pasajera será notificada.", [
                 {
                   text: "OK",
@@ -368,17 +434,19 @@ const HomeDriver = () => {
     }
   }
 
-  // ✅ FUNCIÓN MEJORADA: Detecta automáticamente viajes cancelados
+  // ✅ MEJORADA: Función de fetch con manejo de contraofertas rechazadas
   const fetchPendingRides = async () => {
-    // Don't fetch new rides if driver has an accepted ride
     if (acceptedRide) return
 
+    const now = Date.now()
+    if (now - lastFetchTimestamp.current < 2500) {
+      return
+    }
+    lastFetchTimestamp.current = now
+
     try {
-      // Obtener IDs actuales para verificar cancelaciones
       const currentIds = rideRequests.map((r) => r.id).join(",")
       const lastId = rideRequests[0]?.id || 0
-
-      // Construir URL con parámetros para verificar estados
       let url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&lastId=${lastId}`
 
       if (currentIds) {
@@ -389,14 +457,10 @@ const HomeDriver = () => {
       const data = await response.json()
 
       if (response.ok) {
-        // ✅ PASO 1: Procesar viajes cancelados
+        // Procesar viajes cancelados
         if (data.cancelled_ids && data.cancelled_ids.length > 0) {
           console.log("🚫 Viajes cancelados detectados:", data.cancelled_ids)
-
-          // Remover viajes cancelados de la lista
           setRideRequests((prev) => prev.filter((ride) => !data.cancelled_ids.includes(Number.parseInt(ride.id))))
-
-          // Mostrar notificación opcional
           if (data.cancelled_ids.length === 1) {
             console.log("ℹ️ Un viaje fue cancelado por el pasajero")
           } else {
@@ -404,7 +468,29 @@ const HomeDriver = () => {
           }
         }
 
-        // ✅ PASO 2: Agregar nuevos viajes (si los hay)
+        // ✅ NUEVO: Procesar contraofertas rechazadas
+        if (data.rejected_counteroffers && data.rejected_counteroffers.length > 0) {
+          console.log("❌ Contraofertas rechazadas detectadas:", data.rejected_counteroffers)
+          setRideRequests((prev) =>
+            prev.filter((ride) => !data.rejected_counteroffers.includes(Number.parseInt(ride.id))),
+          )
+
+          // Agregar a la lista de rechazados para que no vuelvan a aparecer
+          const newRejectedRides = new Set(rejectedRides)
+          data.rejected_counteroffers.forEach((id: number) => {
+            newRejectedRides.add(id.toString())
+          })
+          setRejectedRides(newRejectedRides)
+          await saveRejectedRides(newRejectedRides)
+
+          if (data.rejected_counteroffers.length === 1) {
+            console.log("ℹ️ Una contraoferta fue rechazada por el pasajero")
+          } else {
+            console.log(`ℹ️ ${data.rejected_counteroffers.length} contraofertas fueron rechazadas por los pasajeros`)
+          }
+        }
+
+        // Agregar nuevos viajes con estado
         if (data.viajes?.length) {
           const formattedRides: RideRequest[] = data.viajes
             .map((viaje: any) => ({
@@ -417,24 +503,40 @@ const HomeDriver = () => {
               destinationNeighborhood: viaje.destinoBarrio,
               destinationZone: viaje.destinoZona,
               proposedPrice: Number(viaje.valorPersonalizado ?? 0),
+              counterOfferPrice: viaje.valor_contraoferta ? Number(viaje.valor_contraoferta) : undefined,
+              status: viaje.estado === "negociacion" ? ("negotiation" as const) : ("pending" as const),
               passenger: {
                 phone: "N/A",
                 whatsapp: "N/A",
               },
             }))
-            // Filtrar los viajes que ya fueron rechazados por esta conductora
-            .filter((ride: RideRequest) => !rejectedRides.has(ride.id))
+            .filter((ride: RideRequest) => {
+              const isRejected = rejectedRides.has(ride.id)
+              if (isRejected) {
+                console.log(`🚫 Viaje ${ride.id} filtrado (rechazado previamente)`)
+              }
+              return !isRejected
+            })
 
-          // Solo agregar viajes nuevos que no estén ya en la lista y no hayan sido rechazados
-          const existingIds = new Set(rideRequests.map((r) => r.id))
-          const newRides = formattedRides.filter((ride: RideRequest) => !existingIds.has(ride.id))
-
-          if (newRides.length > 0) {
-            setRideRequests((prev) => [...newRides, ...prev])
-            console.log(
-              `✅ ${newRides.length} nuevas solicitudes agregadas (${rejectedRides.size} rechazadas filtradas)`,
+          setRideRequests((prev) => {
+            return formattedRides.reduce(
+              (updatedList, newRide) => {
+                const existingIndex = updatedList.findIndex((r) => r.id === newRide.id)
+                if (existingIndex !== -1) {
+                  // Si ya existe pero su estado cambió
+                  updatedList[existingIndex] = {
+                    ...updatedList[existingIndex],
+                    status: newRide.status,
+                    counterOfferPrice: newRide.counterOfferPrice,
+                  }
+                } else {
+                  updatedList.push(newRide)
+                }
+                return updatedList
+              },
+              [...prev],
             )
-          }
+          })
         }
       }
     } catch (error) {
@@ -442,53 +544,38 @@ const HomeDriver = () => {
     }
   }
 
-  // ✅ POLLING MEJORADO: Verifica cancelaciones más frecuentemente
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>
+    cleanupPolling()
 
-    if (isDriverActive && !acceptedRide) {
-      // Verificar inmediatamente
+    if (isDriverActive && !acceptedRide && conductoraId && isScreenFocused) {
       fetchPendingRides()
-
-      // Polling cada 3 segundos para detectar cancelaciones rápidamente
-      interval = setInterval(() => {
-        fetchPendingRides()
+      isPollingActiveRef.current = true
+      pollingIntervalRef.current = setInterval(() => {
+        if (isPollingActiveRef.current) {
+          fetchPendingRides()
+        }
       }, 3000)
-
-      console.log("🔄 Polling iniciado para detectar cancelaciones")
+      console.log("🔄 Polling iniciado")
     }
 
     return () => {
-      if (interval) {
-        clearInterval(interval)
-        console.log("🛑 Polling detenido")
-      }
+      cleanupPolling()
     }
-  }, [isDriverActive, acceptedRide, rideRequests, rejectedRides])
+  }, [isDriverActive, acceptedRide, conductoraId, isScreenFocused, rejectedRides])
 
   useFocusEffect(
     useCallback(() => {
+      console.log("📱 Pantalla enfocada - cargando datos...")
+      setIsScreenFocused(true)
       fetchUserProfile()
-      if (!acceptedRide && isDriverActive) {
-        fetchPendingRides()
+
+      return () => {
+        console.log("📱 Pantalla desenfocada - limpiando polling...")
+        setIsScreenFocused(false)
+        cleanupPolling()
       }
-    }, [acceptedRide, rejectedRides, isDriverActive]),
+    }, []),
   )
-
-  // Función para limpiar viajes rechazados (opcional, para desarrollo/testing)
-  const clearRejectedRides = async () => {
-    try {
-      if (!conductoraId) return
-
-      const rejectedRidesKey = `rejected_rides_${conductoraId}`
-      await AsyncStorage.removeItem(rejectedRidesKey)
-      setRejectedRides(new Set())
-      console.log("✅ Lista de viajes rechazados limpiada")
-      Alert.alert("Lista limpiada", "Los viajes rechazados han sido limpiados de la memoria.")
-    } catch (error) {
-      console.error("❌ Error al limpiar viajes rechazados:", error)
-    }
-  }
 
   // Render accepted ride detail view
   const renderAcceptedRideDetail = () => {
@@ -539,9 +626,7 @@ const HomeDriver = () => {
               </Text>
             </View>
           </View>
-
           <View style={styles.routeLine} />
-
           <View style={styles.routePoint}>
             <View style={[styles.routePointDot, styles.destinationDotLarge]} />
             <View style={styles.routePointInfo}>
@@ -575,13 +660,19 @@ const HomeDriver = () => {
 
   const renderRideRequest = ({ item }: { item: RideRequest }) => (
     <View style={styles.rideRequestCard}>
-      {/* Header compacto */}
+      {/* Header compacto con indicador de estado */}
       <View style={styles.requestHeader}>
         <View style={styles.passengerInfo}>
           <View style={styles.passengerIcon}>
             <FontAwesome name="user" size={14} color="#666" />
           </View>
           <Text style={styles.passengerName}>{item.passengerName}</Text>
+          {/* Indicador de negociación */}
+          {item.status === "negotiation" && (
+            <View style={styles.negotiationBadge}>
+              <Text style={styles.negotiationBadgeText}>En negociación</Text>
+            </View>
+          )}
         </View>
         <View style={styles.contactActions}>
           <TouchableOpacity style={styles.whatsappButton} onPress={() => openWhatsApp(item.passenger.whatsapp)}>
@@ -596,7 +687,6 @@ const HomeDriver = () => {
       {/* Ubicaciones en layout horizontal */}
       <View style={styles.locationsContainer}>
         <View style={styles.locationsRow}>
-          {/* Origen */}
           <View style={styles.locationCompact}>
             <View style={styles.locationDot} />
             <View style={styles.locationInfo}>
@@ -609,13 +699,9 @@ const HomeDriver = () => {
               </Text>
             </View>
           </View>
-
-          {/* Flecha */}
           <View style={styles.locationArrow}>
             <FontAwesome name="arrow-right" size={12} color="#ccc" />
           </View>
-
-          {/* Destino */}
           <View style={styles.locationCompact}>
             <View style={[styles.locationDot, styles.destinationDot]} />
             <View style={styles.locationInfo}>
@@ -631,14 +717,25 @@ const HomeDriver = () => {
         </View>
       </View>
 
-      {/* Info del viaje y precio en una línea */}
+      {/* Info del viaje con precios */}
       <View style={styles.priceMainContainer}>
         <View style={styles.priceLeftSection}>
-          <Text style={styles.priceAmount}>${item.proposedPrice.toLocaleString()}</Text>
+          {item.status === "negotiation" && item.counterOfferPrice ? (
+            <View style={styles.priceNegotiationContainer}>
+              <Text style={styles.originalPrice}>${item.proposedPrice.toLocaleString()}</Text>
+              <Text style={styles.counterOfferPrice}>→ ${item.counterOfferPrice.toLocaleString()}</Text>
+            </View>
+          ) : (
+            <Text style={styles.priceAmount}>${item.proposedPrice.toLocaleString()}</Text>
+          )}
         </View>
-
         {/* Botón de negociación o campos de edición */}
-        {editingPrice === item.id ? (
+        {item.status === "negotiation" ? (
+          <View style={styles.waitingResponse}>
+            <FontAwesome name="clock-o" size={12} color="#FF9500" />
+            <Text style={styles.waitingResponseText}>Esperando respuesta</Text>
+          </View>
+        ) : editingPrice === item.id ? (
           <View style={styles.priceEditContainer}>
             <TextInput
               style={styles.priceInput}
@@ -668,8 +765,14 @@ const HomeDriver = () => {
         <TouchableOpacity style={styles.rejectButton} onPress={() => rejectRide(item.id)}>
           <Text style={styles.rejectButtonText}>Rechazar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.acceptButton} onPress={() => acceptRide(item.id)}>
-          <Text style={styles.acceptButtonText}>Aceptar</Text>
+        <TouchableOpacity
+          style={[styles.acceptButton, item.status === "negotiation" && styles.acceptButtonDisabled]}
+          onPress={() => acceptRide(item.id)}
+          disabled={item.status === "negotiation"}
+        >
+          <Text style={[styles.acceptButtonText, item.status === "negotiation" && styles.acceptButtonTextDisabled]}>
+            {item.status === "negotiation" ? "En negociación" : "Aceptar"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -690,7 +793,6 @@ const HomeDriver = () => {
           <Text style={styles.headerTitle}>{acceptedRide ? "Viaje en curso" : "Solicitudes de viaje"}</Text>
           <Text style={styles.headerSubtitle}>
             {currentCity} - {currentZone}
-            {rejectedRides.size > 0 && ` • ${rejectedRides.size} rechazados`}
           </Text>
         </View>
         <View style={styles.statusIndicator}>
@@ -726,10 +828,7 @@ const HomeDriver = () => {
             <View style={styles.emptyState}>
               <FontAwesome name="car" size={40} color="#ccc" />
               <Text style={styles.emptyStateText}>No hay solicitudes disponibles</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Mantente activa para recibir nuevas solicitudes
-                {rejectedRides.size > 0 && `\n(${rejectedRides.size} solicitudes rechazadas ocultadas)`}
-              </Text>
+              <Text style={styles.emptyStateSubtext}>Mantente activa para recibir nuevas solicitudes</Text>
             </View>
           )
         ) : (
@@ -745,7 +844,6 @@ const HomeDriver = () => {
       {!acceptedRide && (
         <LinearGradient colors={["#FFE4F3", "#FFC1E3"]} style={styles.footer}>
           <View style={styles.footerContent}>
-            {/* Switch de disponibilidad */}
             <View style={styles.statusContainer}>
               <Text style={styles.statusText}>{isDriverActive ? "Disponible" : "No disponible"}</Text>
               <Switch
@@ -757,20 +855,10 @@ const HomeDriver = () => {
                 style={styles.statusSwitch}
               />
             </View>
-
-            {/* Botón para actualizar ciudad y zona */}
             <TouchableOpacity style={styles.updateLocationButton} onPress={() => navigateTo("./EditProfileD")}>
               <FontAwesome name="map-marker" size={14} color="#FF69B4" />
               <Text style={styles.updateLocationText}>Actualizar ciudad y zona de trabajo</Text>
             </TouchableOpacity>
-
-            {/* Botón para limpiar viajes rechazados (solo para desarrollo/testing) */}
-            {__DEV__ && rejectedRides.size > 0 && (
-              <TouchableOpacity style={styles.clearRejectedButton} onPress={clearRejectedRides}>
-                <FontAwesome name="refresh" size={14} color="#FF6B6B" />
-                <Text style={styles.clearRejectedText}>Limpiar rechazados ({rejectedRides.size})</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </LinearGradient>
       )}
@@ -779,3 +867,4 @@ const HomeDriver = () => {
 }
 
 export default HomeDriver
+

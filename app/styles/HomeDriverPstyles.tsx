@@ -60,8 +60,8 @@ const styles = StyleSheet.create({
   // Lista más eficiente
   requestsList: {
     flex: 1,
-    paddingHorizontal: 16,
-    marginTop: 10,
+    paddingHorizontal: 12, // Reducido de 16 a 12
+    marginTop: 8, // Reducido de 10 a 8
   },
 
   listContainer: {
@@ -299,21 +299,23 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  // NEW STYLES FOR ACCEPTED RIDE DETAIL VIEW
+  // ESTILOS MEJORADOS PARA LA VISTA DE VIAJE ACEPTADO
   acceptedRideContainer: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8, // Reducido de 10 a 8
+    paddingHorizontal: 4, // Agregado para más espacio lateral
   },
 
   acceptedRideHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16, // Reducido de 20 a 16
+    paddingHorizontal: 4, // Agregado padding lateral
   },
 
   acceptedRideTitle: {
-    fontSize: 24,
+    fontSize: 22, // Reducido de 24 a 22
     fontWeight: "bold",
     color: "#333",
   },
@@ -334,8 +336,9 @@ const styles = StyleSheet.create({
   passengerDetailCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    padding: 16, // Reducido de 20 a 16
+    marginBottom: 12, // Reducido de 16 a 12
+    marginHorizontal: 2, // Agregado margen lateral
     flexDirection: "row",
     alignItems: "center",
     shadowColor: "#000",
@@ -346,13 +349,13 @@ const styles = StyleSheet.create({
   },
 
   passengerIconLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70, // Reducido de 80 a 70
+    height: 70, // Reducido de 80 a 70
+    borderRadius: 35, // Ajustado proporcionalmente
     backgroundColor: "#F0F0F0",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
+    marginRight: 14, // Reducido de 16 a 14
     borderWidth: 2,
     borderColor: "#FF69B4",
   },
@@ -362,48 +365,49 @@ const styles = StyleSheet.create({
   },
 
   passengerNameLarge: {
-    fontSize: 20,
+    fontSize: 18, // Reducido de 20 a 18
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 12,
+    marginBottom: 10, // Reducido de 12 a 10
   },
 
   contactButtonsLarge: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8, // Reducido de 10 a 8
   },
 
   whatsappButtonLarge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#25D366",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
-    gap: 8,
+    paddingHorizontal: 14, // Reducido de 16 a 14
+    paddingVertical: 8, // Reducido de 10 a 8
+    borderRadius: 20, // Reducido de 25 a 20
+    gap: 6, // Reducido de 8 a 6
   },
 
   callButtonLarge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FF69B4",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
-    gap: 8,
+    paddingHorizontal: 14, // Reducido de 16 a 14
+    paddingVertical: 8, // Reducido de 10 a 8
+    borderRadius: 20, // Reducido de 25 a 20
+    gap: 6, // Reducido de 8 a 6
   },
 
   contactButtonText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 13, // Reducido de 14 a 13
     fontWeight: "600",
   },
 
   routeDetailCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    padding: 16, // Reducido de 20 a 16
+    marginBottom: 12, // Reducido de 16 a 12
+    marginHorizontal: 2, // Agregado margen lateral
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -441,30 +445,31 @@ const styles = StyleSheet.create({
   },
 
   routePointAddress: {
-    fontSize: 16,
+    fontSize: 15, // Reducido de 16 a 15
     fontWeight: "600",
     color: "#333",
     marginBottom: 4,
   },
 
   routePointNeighborhood: {
-    fontSize: 14,
+    fontSize: 13, // Reducido de 14 a 13
     color: "#888",
   },
 
   routeLine: {
     width: 2,
-    height: 30,
+    height: 25, // Reducido de 30 a 25
     backgroundColor: "#ddd",
     marginLeft: 5,
-    marginVertical: 10,
+    marginVertical: 8, // Reducido de 10 a 8
   },
 
   priceDetailCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
+    padding: 18, // Reducido de 20 a 18
+    marginBottom: 16, // Reducido de 20 a 16
+    marginHorizontal: 2, // Agregado margen lateral
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -476,19 +481,20 @@ const styles = StyleSheet.create({
   priceDetailLabel: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 8,
+    marginBottom: 6, // Reducido de 8 a 6
   },
 
   priceDetailAmount: {
-    fontSize: 32,
+    fontSize: 28, // Reducido de 32 a 28
     fontWeight: "bold",
     color: "#FF69B4",
   },
 
   rideActionButtons: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 10,
+    gap: 10, // Reducido de 12 a 10
+    marginTop: 8, // Reducido de 10 a 8
+    paddingHorizontal: 2, // Agregado padding lateral
   },
 
   cancelRideButton: {
@@ -499,14 +505,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderWidth: 2,
     borderColor: "#FF5722",
-    paddingVertical: 16,
+    paddingVertical: 14, // Reducido de 16 a 14
     borderRadius: 12,
     gap: 8,
   },
 
   cancelRideButtonText: {
     color: "#FF5722",
-    fontSize: 16,
+    fontSize: 15, // Reducido de 16 a 15
     fontWeight: "600",
   },
 
@@ -516,14 +522,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#4CAF50",
-    paddingVertical: 16,
+    paddingVertical: 14, // Reducido de 16 a 14
     borderRadius: 12,
     gap: 8,
   },
 
   completeRideButtonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 15, // Reducido de 16 a 15
     fontWeight: "600",
   },
 
@@ -647,6 +653,64 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
     fontWeight: '600',
     marginLeft: 6,
+  },
+
+  negotiationBadge: {
+    backgroundColor: '#ff9500',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+
+  negotiationBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+
+  priceNegotiationContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+
+  originalPrice: {
+    fontSize: 14,
+    color: '#999999',
+    textDecorationLine: 'line-through',
+  },
+
+  counterOfferPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ff69b4',
+  },
+
+  waitingResponse: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff3e0',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ffe0b2',
+  },
+
+  waitingResponseText: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#ff9500',
+    fontWeight: '500',
+  },
+
+  acceptButtonDisabled: {
+    backgroundColor: '#e0e0e0',
+    borderColor: '#bdbdbd',
+  },
+
+  acceptButtonTextDisabled: {
+    color: '#9e9e9e',
   },
 })
 

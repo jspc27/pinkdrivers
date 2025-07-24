@@ -686,6 +686,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+
+  
 })
 
 export default styles
