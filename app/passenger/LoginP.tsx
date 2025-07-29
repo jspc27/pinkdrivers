@@ -71,6 +71,15 @@ const LoginP = () => {
   };
 
   const pedirPermisoUbicacion = async () => {
+    console.log('📍 Permiso ubicación solicitado');
+console.log('🧭 Navegando a /passenger/HomeP');
+
+try {
+  router.replace('/passenger/HomeP');
+} catch (err) {
+  console.error('❌ Error al navegar a HomeP', err);
+}
+
     setShowPermissionModal(false);
     const { status } = await Location.requestForegroundPermissionsAsync();
 

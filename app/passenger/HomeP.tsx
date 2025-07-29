@@ -25,7 +25,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
-import MapView, { Marker, Polyline } from "react-native-maps"
 import styles from "../styles/HomePstyles"
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window")
@@ -87,18 +86,17 @@ const HomeP = () => {
   const [acceptedTrip, setAcceptedTrip] = useState<AcceptedTripData | null>(null)
   const [isLoadingAcceptedTrip, setIsLoadingAcceptedTrip] = useState(false)
 
-  const [region, setRegion] = useState({
-    latitude: 3.4516,
-    longitude: -76.5319,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  })
+  // Estados para ubicación - mantenemos solo las coordenadas
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number
+    longitude: number
+  } | null>(null)
+
+  const [locationLoading, setLocationLoading] = useState(true)
 
   const [selectedVehicle, setSelectedVehicle] = useState("")
   const [routeDistance, setRouteDistance] = useState<number | null>(null)
   const [priceEstimate, setPriceEstimate] = useState<number | null>(null)
-  const [destinoCoords, setDestinoCoords] = useState<{ latitude: number; longitude: number } | null>(null)
-  const [routeCoordinates, setRouteCoordinates] = useState([])
 
   // Animation references
   const menuAnimation = useRef(new Animated.Value(0)).current
@@ -154,239 +152,346 @@ const HomeP = () => {
     return "Occidente"
   }
 
-  //CONSULTAR VIAJE ACEPTADO
-
- const consultarViajeAceptado = async () => {
-  try {
-    setIsLoadingAcceptedTrip(true)
-    const token = await AsyncStorage.getItem("token")
-    console.log("🟡 Consultando viaje aceptado...")
-
-    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    })
-
-    const data = await response.json()
-    console.log("🟡 Respuesta viaje aceptado:", data)
-
-    // ✅ Si hay viaje aceptado o finalizado
-    if (response.ok && (data.viaje_aceptado || data.viaje_finalizado)) {
-
-      // 🔥 MANEJO DE VIAJES FINALIZADOS
-      if (data.viaje_finalizado) {
-        console.log("✅ Viaje finalizado encontrado")
-        
-        // Mostrar alert de finalización SIEMPRE que haya un viaje finalizado
-        // Sin importar si había un viaje aceptado previo o no
-        const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
-        
-        Alert.alert(
-          "¡Viaje finalizado!", // 🎉 TÍTULO CORRECTO
-          `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} COP\n\n¡Gracias por usar Pink Drivers!`,
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Limpiar todos los estados relacionados con el viaje
-                setAcceptedTrip(null)
-                setIsWaitingForDriver(false)
-                setShowContraoferta(false)
-                setContraofertaData(null)
-                console.log("🎉 Viaje completado exitosamente")
-              }
-            }
-          ]
-        )
-        return // Salir de la función después de manejar el viaje finalizado
+  // 🔥 FUNCIÓN PARA OBTENER DIRECCIÓN
+  const obtenerDireccion = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+        headers: {
+          "User-Agent": "PinkDrivers (soportepinkdrivers@gmail.com)",
+        },
+      })
+      const textResponse = await response.text()
+      const data = JSON.parse(textResponse)
+      
+      if (data.address) {
+        setUbicacionActual(data.address.road || "Ubicación no encontrada")
+        setBarrioActual(data.address.neighbourhood || data.address.suburb || "")
+        setZonaActual(determinarZona(lat, lng))
+        setCiudadActual(data.address.city || data.address.town || data.address.village || "Cali")
+      } else {
+        setUbicacionActual("Ubicación no encontrada")
       }
+    } catch (error) {
+      console.error("❌ Error al obtener la dirección:", error)
+      setUbicacionActual("Error al obtener ubicación")
+    }
+  }
 
-      // ✅ Si el viaje está cancelado por la conductora
-      if (data.viaje_aceptado && data.viaje_aceptado.estado === 'cancelado') {
-        console.log("⚠️ El viaje ha sido cancelado por la conductora")
-        Alert.alert(
-          "Viaje cancelado", // 🚫 TÍTULO PARA CANCELACIÓN
-          "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                setAcceptedTrip(null)
-                setIsWaitingForDriver(false)
-                setShowContraoferta(false)
-                setContraofertaData(null)
-              }
-            }
-          ]
-        )
+  // 🔥 FUNCIÓN PARA OBTENER UBICACIÓN ACTUAL (REUTILIZABLE)
+  const obtenerUbicacionActual = async () => {
+    try {
+      setLocationLoading(true)
+      console.log("🗺️ Obteniendo ubicación actual...")
+      
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== "granted") {
+        Alert.alert("Permiso denegado", "No se pudo acceder a la ubicación")
+        setLocationLoading(false)
+        // Establecer una ubicación por defecto (Cali, Colombia)
+        const defaultLocation = { latitude: 3.4516, longitude: -76.5319 }
+        setCurrentLocation(defaultLocation)
         return
       }
 
-      // ✅ Si hay un viaje aceptado (activo/en proceso)
-      if (data.viaje_aceptado && data.viaje_aceptado.estado !== 'cancelado') {
-        console.log("✅ Viaje aceptado encontrado:", data.viaje_aceptado.id)
-        setAcceptedTrip(data.viaje_aceptado)
-        setIsWaitingForDriver(false)
-        setShowContraoferta(false)
-        setContraofertaData(null)
+      console.log("✅ Permisos de ubicación concedidos")
+      
+      // Obtener ubicación actual
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      })
+
+      const { latitude, longitude } = location.coords
+      console.log("📍 Nueva ubicación obtenida:", latitude, longitude)
+
+      setCurrentLocation({ latitude, longitude })
+      await obtenerDireccion(latitude, longitude)
+
+    } catch (error) {
+      console.error("❌ Error al obtener ubicación:", error)
+      Alert.alert("Error", "No se pudo obtener la ubicación actual")
+      // Establecer ubicación por defecto
+      const defaultLocation = { latitude: 3.4516, longitude: -76.5319 }
+      setCurrentLocation(defaultLocation)
+    } finally {
+      setLocationLoading(false)
+    }
+  }
+
+  //CONSULTAR VIAJE ACEPTADO
+  const consultarViajeAceptado = async () => {
+    try {
+      setIsLoadingAcceptedTrip(true)
+      const token = await AsyncStorage.getItem("token")
+      console.log("🟡 Consultando viaje aceptado...")
+
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+      console.log("🟡 Respuesta viaje aceptado:", data)
+
+      // ✅ Si hay viaje aceptado o finalizado
+      if (response.ok && (data.viaje_aceptado || data.viaje_finalizado)) {
+
+        // 🔥 MANEJO DE VIAJES FINALIZADOS
+        if (data.viaje_finalizado) {
+          console.log("✅ Viaje finalizado encontrado")
+          
+          // Mostrar alert de finalización SIEMPRE que haya un viaje finalizado
+          // Sin importar si había un viaje aceptado previo o no
+          const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
+          
+          Alert.alert(
+            "¡Viaje finalizado!", // 🎉 TÍTULO CORRECTO
+            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} COP\n\n¡Gracias por usar Pink Drivers!`,
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  // Limpiar todos los estados relacionados con el viaje
+                  setAcceptedTrip(null)
+                  setIsWaitingForDriver(false)
+                  setShowContraoferta(false)
+                  setContraofertaData(null)
+                  console.log("🎉 Viaje completado exitosamente")
+                }
+              }
+            ]
+          )
+          return // Salir de la función después de manejar el viaje finalizado
+        }
+
+        // ✅ Si el viaje está cancelado por la conductora
+        if (data.viaje_aceptado && data.viaje_aceptado.estado === 'cancelado') {
+          console.log("⚠️ El viaje ha sido cancelado por la conductora")
+          Alert.alert(
+            "Viaje cancelado", // 🚫 TÍTULO PARA CANCELACIÓN
+            "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  setAcceptedTrip(null)
+                  setIsWaitingForDriver(false)
+                  setShowContraoferta(false)
+                  setContraofertaData(null)
+                }
+              }
+            ]
+          )
+          return
+        }
+
+        // ✅ Si hay un viaje aceptado (activo/en proceso)
+        if (data.viaje_aceptado && data.viaje_aceptado.estado !== 'cancelado') {
+          console.log("✅ Viaje aceptado encontrado:", data.viaje_aceptado.id)
+          setAcceptedTrip(data.viaje_aceptado)
+          setIsWaitingForDriver(false)
+          setShowContraoferta(false)
+          setContraofertaData(null)
+        }
+
+      } else {
+        console.log("ℹ️ No hay viaje aceptado:", data.message)
+
+        // Si antes había un viaje aceptado pero ya no hay nada → fue cancelado
+        if (acceptedTrip && !data.viaje_aceptado && !data.viaje_finalizado) {
+          console.log("⚠️ El viaje anterior desapareció - posiblemente cancelado")
+          Alert.alert(
+            "Viaje cancelado",
+            "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  setAcceptedTrip(null)
+                  setIsWaitingForDriver(false)
+                  setShowContraoferta(false)
+                  setContraofertaData(null)
+                }
+              }
+            ]
+          )
+        } else {
+          // No había viaje anterior, simplemente limpiar
+          setAcceptedTrip(null)
+        }
       }
 
-    } else {
-      console.log("ℹ️ No hay viaje aceptado:", data.message)
+    } catch (error) {
+      console.error("❌ Error al consultar viaje aceptado:", error)
+      setAcceptedTrip(null)
+    } finally {
+      setIsLoadingAcceptedTrip(false)
+    }
+  }
 
-      // Si antes había un viaje aceptado pero ya no hay nada → fue cancelado
-      if (acceptedTrip && !data.viaje_aceptado && !data.viaje_finalizado) {
-        console.log("⚠️ El viaje anterior desapareció - posiblemente cancelado")
-        Alert.alert(
-          "Viaje cancelado",
-          "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                setAcceptedTrip(null)
-                setIsWaitingForDriver(false)
-                setShowContraoferta(false)
-                setContraofertaData(null)
+  // 🔥 useEffect para obtener ubicación INICIAL y configurar watcher
+  useEffect(() => {
+    const configurarUbicacionInicial = async () => {
+      // Obtener ubicación inicial
+      await obtenerUbicacionActual()
+
+      // OPCIONAL: Configurar un watcher MÁS LENTO que SOLO actualice currentLocation
+      try {
+        await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced, // Cambiado de High a Balanced
+            timeInterval: 30000, // Cada 30 segundos (más lento)
+            distanceInterval: 100, // Cada 100 metros (más distancia)
+          },
+          async (newLocation) => {
+            const { latitude: newLat, longitude: newLng } = newLocation.coords
+            
+            // SOLO actualizar currentLocation si el cambio es significativo
+            setCurrentLocation(prevLocation => {
+              if (!prevLocation) return { latitude: newLat, longitude: newLng }
+              
+              const latDiff = Math.abs(prevLocation.latitude - newLat)
+              const lngDiff = Math.abs(prevLocation.longitude - newLng)
+              
+              // Solo actualizar si el cambio es significativo
+              if (latDiff > 0.001 || lngDiff > 0.001) {
+                return { latitude: newLat, longitude: newLng }
               }
+              
+              return prevLocation
+            })
+
+            // Solo actualizar dirección si los campos están vacíos o tienen valores por defecto
+            if (!ubicacionActual || 
+                ubicacionActual === "Obteniendo ubicación..." || 
+                ubicacionActual === "Ubicación no encontrada" || 
+                ubicacionActual === "Error al obtener ubicación") {
+              await obtenerDireccion(newLat, newLng)
             }
-          ]
+          },
         )
-      } else {
-        // No había viaje anterior, simplemente limpiar
-        setAcceptedTrip(null)
+      } catch (error) {
+        console.error("❌ Error configurando watcher:", error)
       }
     }
 
-  } catch (error) {
-    console.error("❌ Error al consultar viaje aceptado:", error)
-    setAcceptedTrip(null)
-  } finally {
-    setIsLoadingAcceptedTrip(false)
-  }
-}
+    // EJECUTAR SOLO UNA VEZ al montar el componente
+    configurarUbicacionInicial()
+  }, []) // Array de dependencias vacío - SOLO se ejecuta una vez
 
+  // useEffect para el polling
+  useEffect(() => {
+    let intervalId: number
 
-// IMPORTANTE: También necesitas agregar un polling continuo para detectar cancelaciones
-// Modifica el useEffect del polling:
-
-useEffect(() => {
-  let intervalId: number
-
-  // NUEVO: Polling continuo cuando hay un viaje aceptado para detectar cancelaciones
-  if (acceptedTrip) {
-    console.log("🔄 Iniciando polling para viaje aceptado")
-    consultarViajeAceptado()
-    
-    intervalId = setInterval(() => {
+    if (acceptedTrip) {
+      console.log("🔄 Iniciando polling para viaje aceptado")
       consultarViajeAceptado()
-    }, 3000) // Cada 3 segundos para detectar cancelaciones rápidamente
-    
-  } else if (isWaitingForDriver && !showContraoferta) {
-    // Check for counter-offers first
-    consultarContraoferta()
-    // Then check for accepted trips
-    consultarViajeAceptado()
-
-    intervalId = setInterval(() => {
+     
+      intervalId = setInterval(() => {
+        consultarViajeAceptado()
+      }, 3000)
+     
+    } else if (isWaitingForDriver && !showContraoferta) {
       consultarContraoferta()
       consultarViajeAceptado()
-    }, 5000)
-    
-  } else if (!isWaitingForDriver && !acceptedTrip) {
-    // Check for accepted trips on app load
-    consultarViajeAceptado()
-  }
 
-  return () => {
-    if (intervalId) {
-      clearInterval(intervalId)
-      console.log("🛑 Polling detenido")
+      intervalId = setInterval(() => {
+       consultarContraoferta()
+       consultarViajeAceptado()
+     }, 5000)
+     
+    } else if (!isWaitingForDriver && !acceptedTrip) {
+      consultarViajeAceptado()
     }
-  }
-}, [isWaitingForDriver, showContraoferta, acceptedTrip])
-  // Function to cancel accepted trip
-const cancelarViajeAceptado = async () => {
-  if (!acceptedTrip) return;
-  
-  Alert.alert(
-    "Cancelar viaje", 
-    "¿Estás segura de que quieres cancelar este viaje?", 
-    [
-      { text: "No", style: "cancel" },
-      {
-        text: "Sí, cancelar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            // Mostrar loading
-            setIsLoadingAcceptedTrip(true);
-            
-            const token = await AsyncStorage.getItem("token");
-            const response = await fetch(
-              "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje",
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  viaje_id: acceptedTrip.id
-                }),
-              }
-            );
 
-            const data = await response.json();
-            
-            if (response.ok && data.success) {
-              // Limpiar el estado del viaje aceptado
-              setAcceptedTrip(null);
-              setIsLoadingAcceptedTrip(false);
+    return () => {
+     if (intervalId) {
+        clearInterval(intervalId)
+       console.log("🛑 Polling detenido")
+      }
+  }
+ }, [isWaitingForDriver, showContraoferta, acceptedTrip])
+
+  // Function to cancel accepted trip
+  const cancelarViajeAceptado = async () => {
+    if (!acceptedTrip) return;
+    
+    Alert.alert(
+      "Cancelar viaje", 
+      "¿Estás segura de que quieres cancelar este viaje?", 
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Sí, cancelar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsLoadingAcceptedTrip(true);
               
-              Alert.alert(
-                "Viaje cancelado", 
-                "El viaje ha sido cancelado exitosamente",
-                [
-                  {
-                    text: "OK",
-                    onPress: () => {
-                      // Resetear otros estados si es necesario
-                      setIsWaitingForDriver(false);
-                      setShowContraoferta(false);
-                      setContraofertaData(null);
+              const token = await AsyncStorage.getItem("token");
+              const response = await fetch(
+                "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    viaje_id: acceptedTrip.id
+                  }),
+                }
+              );
+
+              const data = await response.json();
+              
+              if (response.ok && data.success) {
+                setAcceptedTrip(null);
+                setIsLoadingAcceptedTrip(false);
+                
+                Alert.alert(
+                  "Viaje cancelado", 
+                  "El viaje ha sido cancelado exitosamente",
+                  [
+                    {
+                      text: "OK",
+                      onPress: async () => {
+                        setIsWaitingForDriver(false);
+                        setShowContraoferta(false);
+                        setContraofertaData(null);
+                        // 🔥 OBTENER NUEVA UBICACIÓN DESPUÉS DE CANCELAR
+                        await limpiarFormulario();
+                      }
                     }
-                  }
-                ]
-              );
+                  ]
+                );
+                
+                console.log("✅ Viaje cancelado exitosamente");
+                
+              } else {
+                setIsLoadingAcceptedTrip(false);
+                Alert.alert(
+                  "Error", 
+                  data.error || "No se pudo cancelar el viaje. Inténtalo de nuevo."
+                );
+                console.error("❌ Error al cancelar viaje:", data.error);
+              }
               
-              console.log("✅ Viaje cancelado exitosamente");
-              
-            } else {
+            } catch (error) {
               setIsLoadingAcceptedTrip(false);
+              console.error("❌ Error de conexión al cancelar viaje:", error);
               Alert.alert(
-                "Error", 
-                data.error || "No se pudo cancelar el viaje. Inténtalo de nuevo."
+                "Error de conexión", 
+                "No se pudo conectar con el servidor. Verifica tu conexión a internet."
               );
-              console.error("❌ Error al cancelar viaje:", data.error);
             }
-            
-          } catch (error) {
-            setIsLoadingAcceptedTrip(false);
-            console.error("❌ Error de conexión al cancelar viaje:", error);
-            Alert.alert(
-              "Error de conexión", 
-              "No se pudo conectar con el servidor. Verifica tu conexión a internet."
-            );
-          }
+          },
         },
-      },
-    ]
-  );
-};
+      ]
+    );
+  };
 
   // Function to call driver
   const llamarConductora = (telefono: string) => {
@@ -457,7 +562,6 @@ const cancelarViajeAceptado = async () => {
                 setContraofertaData(null)
                 setIsWaitingForDriver(false)
                 closeModal()
-                // Check for accepted trip after accepting counter-offer
                 setTimeout(() => {
                   consultarViajeAceptado()
                 }, 1000)
@@ -519,89 +623,6 @@ const cancelarViajeAceptado = async () => {
       setIsProcessingResponse(false)
     }
   }
-
-  useEffect(() => {
-    const obtenerUbicacion = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== "granted") {
-        Alert.alert("Permiso denegado", "No se pudo acceder a la ubicación")
-        return
-      }
-      await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 200000,
-          distanceInterval: 50,
-        },
-        async (location) => {
-          const { latitude, longitude } = location.coords
-          setRegion((prev) => ({ ...prev, latitude, longitude }))
-          await obtenerDireccion(latitude, longitude)
-        },
-      )
-    }
-    const obtenerDireccion = async (lat: number, lng: number) => {
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
-          headers: {
-            "User-Agent": "PinkDrivers (soportepinkdrivers@gmail.com)",
-          },
-        })
-        const textResponse = await response.text()
-        const data = JSON.parse(textResponse)
-        if (data.address) {
-          if (!ubicacionActual) {
-            setUbicacionActual(data.address.road || "Ubicación no encontrada")
-          }
-          if (!barrioActual) {
-            setBarrioActual(data.address.neighbourhood || data.address.suburb || "")
-          }
-          if (!zonaActual) {
-            setZonaActual(determinarZona(lat, lng))
-          }
-          if (!ciudadActual) {
-            setCiudadActual(data.address.city || data.address.town || data.address.village || "")
-          }
-        } else {
-          if (!ubicacionActual) {
-            setUbicacionActual("Ubicación no encontrada")
-          }
-        }
-      } catch (error) {
-        console.error("Error al obtener la dirección:", error)
-        if (!ubicacionActual) {
-          setUbicacionActual("Error al obtener ubicación")
-        }
-      }
-    }
-    obtenerUbicacion()
-  }, [ubicacionActual, barrioActual, zonaActual, ciudadActual])
-
-  // Polling for counter-offers and accepted trips
-  useEffect(() => {
-    let intervalId: number
-
-    if (isWaitingForDriver && !showContraoferta && !acceptedTrip) {
-      // Check for counter-offers first
-      consultarContraoferta()
-      // Then check for accepted trips
-      consultarViajeAceptado()
-
-      intervalId = setInterval(() => {
-        consultarContraoferta()
-        consultarViajeAceptado()
-      }, 5000)
-    } else if (!isWaitingForDriver && !acceptedTrip) {
-      // Check for accepted trips on app load
-      consultarViajeAceptado()
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
-    }
-  }, [isWaitingForDriver, showContraoferta, acceptedTrip])
 
   // Keyboard event listeners
   useEffect(() => {
@@ -772,17 +793,19 @@ const cancelarViajeAceptado = async () => {
     )
   }
 
-  const limpiarFormulario = () => {
-    setUbicacionActual("")
-    setBarrioActual("")
-    setZonaActual("")
-    setCiudadActual("")
+  // 🔥 FUNCIÓN MEJORADA PARA LIMPIAR FORMULARIO Y OBTENER NUEVA UBICACIÓN
+  const limpiarFormulario = async () => {
+    // Limpiar campos del formulario
     setDestinoDireccion("")
     setDestinoBarrio("")
     setDestinoZona("")
     setPuntoReferencia("")
     setValorPersonalizado("")
     setSelectedVehicle("")
+    
+    // 🔥 OBTENER NUEVA UBICACIÓN DESPUÉS DE LIMPIAR
+    console.log("🔄 Obteniendo nueva ubicación después de limpiar formulario...")
+    await obtenerUbicacionActual()
   }
 
   const handleConfirmarViaje = async () => {
@@ -825,7 +848,7 @@ const cancelarViajeAceptado = async () => {
       if (res.ok) {
         setIsSubmittingRequest(false)
         setIsWaitingForDriver(true)
-        limpiarFormulario()
+        // NO llamar limpiarFormulario aquí para no perder los datos del viaje actual
         console.log("✅ Solicitud de viaje enviada exitosamente")
       } else {
         console.error("❌ Error en la solicitud:", json)
@@ -851,44 +874,48 @@ const cancelarViajeAceptado = async () => {
     }, 500)
   }
 
+  // 🔥 FUNCIÓN MEJORADA PARA CANCELAR BÚSQUEDA CON NUEVA UBICACIÓN
   const cancelarBusqueda = async () => {
-  try {
-    const token = await AsyncStorage.getItem("token");
+    try {
+      const token = await AsyncStorage.getItem("token");
 
-    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      // No se envía viaje_id: se cancela automáticamente el último con estado 'pendiente'
-      body: JSON.stringify({})
-    });
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({})
+      });
 
-    const data = await response.json();
-    console.log("🟡 Respuesta al cancelar búsqueda:", data);
+      const data = await response.json();
+      console.log("🟡 Respuesta al cancelar búsqueda:", data);
 
-    if (response.ok && data.success) {
-      Alert.alert("Búsqueda cancelada", "Tu búsqueda fue cancelada exitosamente.");
-      setIsWaitingForDriver(false);
-      setAcceptedTrip(null);
-      setShowContraoferta(false);
-      setContraofertaData(null);
-    } else {
-      Alert.alert("Error", data.error || "No se pudo cancelar la búsqueda.");
+      if (response.ok && data.success) {
+        Alert.alert("Búsqueda cancelada", "Tu búsqueda fue cancelada exitosamente.");
+        
+        // Resetear estados
+        setIsWaitingForDriver(false);
+        setAcceptedTrip(null);
+        setShowContraoferta(false);
+        setContraofertaData(null);
+        
+        // 🔥 LIMPIAR Y OBTENER NUEVA UBICACIÓN
+        await limpiarFormulario();
+        
+      } else {
+        Alert.alert("Error", data.error || "No se pudo cancelar la búsqueda.");
+      }
+    } catch (error) {
+      console.error("❌ Error al cancelar búsqueda:", error);
+      Alert.alert("Error", "Ocurrió un error al cancelar la búsqueda.");
     }
-  } catch (error) {
-    console.error("❌ Error al cancelar búsqueda:", error);
-    Alert.alert("Error", "Ocurrió un error al cancelar la búsqueda.");
-  }
-};
-
+  };
 
   // Render accepted trip detail view - DiDi style
   const renderAcceptedTripDetail = () => {
     if (!acceptedTrip) return null
 
-    // Extract first name only
     const firstName = acceptedTrip.conductora_nombre.split(" ")[0]
 
     return (
@@ -964,6 +991,59 @@ const cancelarViajeAceptado = async () => {
     )
   }
 
+  // Función para renderizar el mapa con imagen personalizada
+  const renderMap = () => {
+    if (locationLoading) {
+      return (
+        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color="#FF69B4" />
+          <Text style={{ color: "#fff", marginTop: 10, fontSize: 16 }}>
+            Cargando ubicación...
+          </Text>
+        </View>
+      )
+    }
+
+    return (
+      <View style={styles.map}>
+        <Image
+          source={require('../../assets/images/mapa2.jpg')}
+          style={{
+            width: '100%',
+            height: '100%',
+            resizeMode: 'cover'
+          }}
+          onLoad={() => {
+            console.log("🖼️ Imagen del mapa cargada correctamente");
+          }}
+          onError={(error) => {
+            console.error("❌ Error al cargar la imagen:", error);
+          }}
+        />
+        
+        {/* Overlay con información de ubicación */}
+        <View style={{
+          position: 'absolute',
+          bottom: 20,
+          left: 20,
+          right: 20,
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: 15,
+          borderRadius: 10,
+          alignItems: 'center'
+        }}>
+          <FontAwesome name="map-marker" size={24} color="#FF69B4" />
+          <Text style={{ color: "#333", fontSize: 14, marginTop: 5, textAlign: 'center' }}>
+            {currentLocation 
+              ? `Ubicación: ${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`
+              : "Obteniendo ubicación..."
+            }
+          </Text>
+        </View>
+      </View>
+    )
+  }
+
   if (!usuarioId) {
     return (
       <LinearGradient
@@ -983,13 +1063,7 @@ const cancelarViajeAceptado = async () => {
         <StatusBar barStyle="light-content" backgroundColor="#FF69B4" />
 
         <View style={[styles.mapContainer, { height: screenHeight * 0.4 }]}>
-          <MapView style={styles.map} region={region}>
-            <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
-            {destinoCoords && <Marker coordinate={destinoCoords} pinColor="#FF1493" />}
-            {routeCoordinates.length > 0 && (
-              <Polyline coordinates={routeCoordinates} strokeWidth={4} strokeColor="#FF1493" />
-            )}
-          </MapView>
+          {renderMap()}
         </View>
 
         <View style={styles.avatarMenuContainer}>
@@ -1013,13 +1087,7 @@ const cancelarViajeAceptado = async () => {
     <LinearGradient colors={["#CF5BA9", "#B33F8D"]} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#FF69B4" />
       <View style={[styles.mapContainer, isKeyboardVisible && styles.mapWithKeyboard]}>
-        <MapView style={styles.map} region={region}>
-          <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
-          {destinoCoords && <Marker coordinate={destinoCoords} pinColor="#FF1493" />}
-          {routeCoordinates.length > 0 && (
-            <Polyline coordinates={routeCoordinates} strokeWidth={4} strokeColor="#FF1493" />
-          )}
-        </MapView>
+        {renderMap()}
       </View>
 
       {menuVisible && <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={closeMenu} />}
