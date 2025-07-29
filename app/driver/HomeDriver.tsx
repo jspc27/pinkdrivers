@@ -237,7 +237,7 @@ const HomeDriver = () => {
 
         Alert.alert(
           "Contrapropuesta enviada",
-          `Has propuesto $${newPrice.toLocaleString()} COP. La pasajera será notificada y podrá aceptar o rechazar tu propuesta.`,
+          `Has propuesto $${newPrice.toLocaleString()}. La pasajera será notificada y podrá aceptar o rechazar tu propuesta.`,
         )
         console.log("✅ Contrapropuesta enviada exitosamente")
       } else {
@@ -335,7 +335,7 @@ const HomeDriver = () => {
               setRideStatus("pending")
               Alert.alert(
                 "¡Viaje finalizado!",
-                `Viaje completado exitosamente. Valor: $${data.valor_final?.toLocaleString()} COP`,
+                `Viaje completado exitosamente. Valor: $${data.valor_final?.toLocaleString()}`,
                 [
                   {
                     text: "OK",
@@ -434,115 +434,111 @@ const HomeDriver = () => {
     }
   }
 
-  // ✅ MEJORADA: Función de fetch con manejo de contraofertas rechazadas
-  const fetchPendingRides = async () => {
-    if (acceptedRide) return
+ const fetchPendingRides = async () => {
+  if (acceptedRide) return
 
-    const now = Date.now()
-    if (now - lastFetchTimestamp.current < 2500) {
+  const now = Date.now()
+  if (now - lastFetchTimestamp.current < 2500) {
+    return
+  }
+  lastFetchTimestamp.current = now
+
+  try {
+    const token = await AsyncStorage.getItem("token")
+    if (!token) {
+      console.warn("⚠️ Token no disponible para viajes pendientes.")
       return
     }
-    lastFetchTimestamp.current = now
 
-    try {
-      const currentIds = rideRequests.map((r) => r.id).join(",")
-      const lastId = rideRequests[0]?.id || 0
-      let url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&lastId=${lastId}`
+    const response = await fetch(
+      "https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    )
 
-      if (currentIds) {
-        url += `&currentIds=${currentIds}&checkStates=true`
+    const data = await response.json()
+
+    if (response.ok) {
+      // 🚫 Cancelaciones
+      if (data.cancelled_ids && data.cancelled_ids.length > 0) {
+        console.log("🚫 Viajes cancelados detectados:", data.cancelled_ids)
+        setRideRequests((prev) =>
+          prev.filter((ride) => !data.cancelled_ids.includes(Number.parseInt(ride.id))),
+        )
       }
 
-      const response = await fetch(url)
-      const data = await response.json()
+      // ❌ Contraofertas rechazadas
+      if (data.rejected_counteroffers && data.rejected_counteroffers.length > 0) {
+        console.log("❌ Contraofertas rechazadas:", data.rejected_counteroffers)
+        setRideRequests((prev) =>
+          prev.filter((ride) => !data.rejected_counteroffers.includes(Number.parseInt(ride.id))),
+        )
 
-      if (response.ok) {
-        // Procesar viajes cancelados
-        if (data.cancelled_ids && data.cancelled_ids.length > 0) {
-          console.log("🚫 Viajes cancelados detectados:", data.cancelled_ids)
-          setRideRequests((prev) => prev.filter((ride) => !data.cancelled_ids.includes(Number.parseInt(ride.id))))
-          if (data.cancelled_ids.length === 1) {
-            console.log("ℹ️ Un viaje fue cancelado por el pasajero")
-          } else {
-            console.log(`ℹ️ ${data.cancelled_ids.length} viajes fueron cancelados por los pasajeros`)
-          }
-        }
+        const newRejectedRides = new Set(rejectedRides)
+        data.rejected_counteroffers.forEach((id: number) => {
+          newRejectedRides.add(id.toString())
+        })
+        setRejectedRides(newRejectedRides)
+        await saveRejectedRides(newRejectedRides)
+      }
 
-        // ✅ NUEVO: Procesar contraofertas rechazadas
-        if (data.rejected_counteroffers && data.rejected_counteroffers.length > 0) {
-          console.log("❌ Contraofertas rechazadas detectadas:", data.rejected_counteroffers)
-          setRideRequests((prev) =>
-            prev.filter((ride) => !data.rejected_counteroffers.includes(Number.parseInt(ride.id))),
-          )
-
-          // Agregar a la lista de rechazados para que no vuelvan a aparecer
-          const newRejectedRides = new Set(rejectedRides)
-          data.rejected_counteroffers.forEach((id: number) => {
-            newRejectedRides.add(id.toString())
+      // ✅ Agregar nuevos viajes (ya filtrados por tipo_vehiculo)
+      if (data.viajes?.length) {
+        const formattedRides: RideRequest[] = data.viajes
+          .map((viaje: any) => ({
+            id: viaje.id.toString(),
+            passengerName: viaje.pasajero_nombre.split(" ")[0],
+            pickupAddress: viaje.ubicacionActual,
+            pickupNeighborhood: viaje.barrioActual,
+            pickupZone: viaje.zonaActual,
+            destinationAddress: viaje.destinoDireccion,
+            destinationNeighborhood: viaje.destinoBarrio,
+            destinationZone: viaje.destinoZona,
+            proposedPrice: Number(viaje.valorPersonalizado ?? 0),
+            counterOfferPrice: viaje.valor_contraoferta
+              ? Number(viaje.valor_contraoferta)
+              : undefined,
+            status: viaje.estado === "negociacion" ? "negotiation" : "pending",
+            passenger: {
+              phone: "N/A",
+              whatsapp: "N/A",
+            },
+          }))
+          .filter((ride: RideRequest) => {
+            const isRejected = rejectedRides.has(ride.id)
+            if (isRejected) {
+              console.log(`🚫 Viaje ${ride.id} filtrado (rechazado previamente)`)
+            }
+            return !isRejected
           })
-          setRejectedRides(newRejectedRides)
-          await saveRejectedRides(newRejectedRides)
 
-          if (data.rejected_counteroffers.length === 1) {
-            console.log("ℹ️ Una contraoferta fue rechazada por el pasajero")
-          } else {
-            console.log(`ℹ️ ${data.rejected_counteroffers.length} contraofertas fueron rechazadas por los pasajeros`)
-          }
-        }
-
-        // Agregar nuevos viajes con estado
-        if (data.viajes?.length) {
-          const formattedRides: RideRequest[] = data.viajes
-            .map((viaje: any) => ({
-              id: viaje.id.toString(),
-              passengerName: viaje.pasajero_nombre.split(" ")[0],
-              pickupAddress: viaje.ubicacionActual,
-              pickupNeighborhood: viaje.barrioActual,
-              pickupZone: viaje.zonaActual,
-              destinationAddress: viaje.destinoDireccion,
-              destinationNeighborhood: viaje.destinoBarrio,
-              destinationZone: viaje.destinoZona,
-              proposedPrice: Number(viaje.valorPersonalizado ?? 0),
-              counterOfferPrice: viaje.valor_contraoferta ? Number(viaje.valor_contraoferta) : undefined,
-              status: viaje.estado === "negociacion" ? ("negotiation" as const) : ("pending" as const),
-              passenger: {
-                phone: "N/A",
-                whatsapp: "N/A",
-              },
-            }))
-            .filter((ride: RideRequest) => {
-              const isRejected = rejectedRides.has(ride.id)
-              if (isRejected) {
-                console.log(`🚫 Viaje ${ride.id} filtrado (rechazado previamente)`)
+        // 🧠 Mezclar con lista existente
+        setRideRequests((prev) =>
+          formattedRides.reduce((updatedList, newRide) => {
+            const existingIndex = updatedList.findIndex((r) => r.id === newRide.id)
+            if (existingIndex !== -1) {
+              updatedList[existingIndex] = {
+                ...updatedList[existingIndex],
+                status: newRide.status,
+                counterOfferPrice: newRide.counterOfferPrice,
               }
-              return !isRejected
-            })
-
-          setRideRequests((prev) => {
-            return formattedRides.reduce(
-              (updatedList, newRide) => {
-                const existingIndex = updatedList.findIndex((r) => r.id === newRide.id)
-                if (existingIndex !== -1) {
-                  // Si ya existe pero su estado cambió
-                  updatedList[existingIndex] = {
-                    ...updatedList[existingIndex],
-                    status: newRide.status,
-                    counterOfferPrice: newRide.counterOfferPrice,
-                  }
-                } else {
-                  updatedList.push(newRide)
-                }
-                return updatedList
-              },
-              [...prev],
-            )
-          })
-        }
+            } else {
+              updatedList.push(newRide)
+            }
+            return updatedList
+          }, [...prev]),
+        )
       }
-    } catch (error) {
-      console.error("❌ Error al conectar con la API:", error)
+    } else {
+      console.warn("⚠️ Error de servidor al consultar viajes:", data)
     }
+  } catch (error) {
+    console.error("❌ Error al conectar con la API:", error)
   }
+}
 
   useEffect(() => {
     cleanupPolling()
@@ -641,7 +637,7 @@ const HomeDriver = () => {
 
         <View style={styles.priceDetailCard}>
           <Text style={styles.priceDetailLabel}>Precio acordado</Text>
-          <Text style={styles.priceDetailAmount}>${acceptedRide.proposedPrice.toLocaleString()} COP</Text>
+          <Text style={styles.priceDetailAmount}>${acceptedRide.proposedPrice.toLocaleString()} </Text>
         </View>
 
         <View style={styles.rideActionButtons}>

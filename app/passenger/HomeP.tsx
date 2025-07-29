@@ -248,7 +248,7 @@ const HomeP = () => {
           
           Alert.alert(
             "¡Viaje finalizado!", // 🎉 TÍTULO CORRECTO
-            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} COP\n\n¡Gracias por usar Pink Drivers!`,
+            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} \n\n¡Gracias por usar Pink Drivers!`,
             [
               {
                 text: "OK",
@@ -553,7 +553,7 @@ const HomeP = () => {
       if (response.ok && data.success) {
         Alert.alert(
           "¡Contraoferta aceptada!",
-          `Has aceptado la propuesta de ${contraofertaData.conductora_nombre} por $${Number(contraofertaData.valorPersonalizado).toLocaleString()} COP`,
+          `Has aceptado la propuesta de ${contraofertaData.conductora_nombre} por $${Number(contraofertaData.valorPersonalizado).toLocaleString()}`,
           [
             {
               text: "OK",
@@ -807,6 +807,7 @@ const HomeP = () => {
     console.log("🔄 Obteniendo nueva ubicación después de limpiar formulario...")
     await obtenerUbicacionActual()
   }
+  
 
   const handleConfirmarViaje = async () => {
     if (!usuarioId) {
@@ -977,7 +978,7 @@ const HomeP = () => {
 
         <View style={styles.tripPriceDetailCard}>
           <Text style={styles.tripPriceDetailLabel}>Precio acordado</Text>
-          <Text style={styles.tripPriceDetailAmount}>${acceptedTrip.valorPersonalizado.toLocaleString()} COP</Text>
+          <Text style={styles.tripPriceDetailAmount}>${acceptedTrip.valorPersonalizado.toLocaleString()}</Text>
           <Text style={styles.tripVehicleType}>Vehículo: {acceptedTrip.selectedVehicle}</Text>
         </View>
 
@@ -1155,7 +1156,7 @@ const HomeP = () => {
                     <Text style={styles.contraofertaPlate}>Color: {contraofertaData.vehiculo_color}</Text>
                     <Text style={styles.contraofertaMessage}>Te propuso un precio de:</Text>
                     <Text style={styles.contraofertaPrice}>
-                      ${Number(contraofertaData.valorPersonalizado).toLocaleString()} COP
+                      ${Number(contraofertaData.valorPersonalizado).toLocaleString()} 
                     </Text>
                     <View style={styles.contraofertaButtons}>
                       <TouchableOpacity
@@ -1401,7 +1402,7 @@ const HomeP = () => {
 
                     {priceEstimate && !valorPersonalizado && (
                       <Text style={styles.priceEstimateText}>
-                        Precio sugerido: ${priceEstimate.toLocaleString("es-CO")} COP
+                        Precio sugerido: ${priceEstimate.toLocaleString("es-CO")} 
                         {routeDistance && ` (${routeDistance.toFixed(1)} km)`}
                       </Text>
                     )}
