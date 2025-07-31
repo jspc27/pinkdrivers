@@ -66,6 +66,7 @@ const LoginD = () => {
         // ✅ Guarda el token y datos del usuario
         await AsyncStorage.setItem("token", data.token)
         await AsyncStorage.setItem("userData", JSON.stringify(data.user))
+        await AsyncStorage.setItem('rol', 'conductora');
 
         // Muestra modal y continúa
         setShowPermissionModal(true)

@@ -1,15 +1,31 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, StatusBar, SafeAreaView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import styles from '../styles/WelcomeStyles'; // usa los estilos que se te dan abajo
+import React, { useEffect } from 'react';
+import { Image, SafeAreaView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import styles from '../styles/WelcomeStyles';
 
 const Index = () => {
+  useEffect(() => {
+    const checkSession = async () => {
+      const token = await AsyncStorage.getItem('token');
+      const rol = await AsyncStorage.getItem('rol');
+
+      if (token && rol) {
+        // Redirige al home según el rol
+        if (rol === 'conductora') {
+          router.replace('/driver/HomeDriver');
+        } else if (rol === 'pasajero') {
+          router.replace('/passenger/HomeP');
+        }
+      }
+    };
+
+    checkSession();
+  }, []);
+
   return (
-    <LinearGradient
-      colors={['#FF69B4', '#FF1493']}
-      style={styles.container}
-    >
+    <LinearGradient colors={['#FF69B4', '#FF1493']} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#FF69B4" />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.logoContainer}>

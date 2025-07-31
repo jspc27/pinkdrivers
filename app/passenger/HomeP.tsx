@@ -117,6 +117,10 @@ const HomeP = () => {
   const [usuarioId, setUsuarioId] = useState<number | null>(null)
   const [usuarioData, setUsuarioData] = useState<any>(null)
 
+  // 🔥 NUEVO: Referencias para el polling
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastViajeIdRef = useRef<number | null>(null)
+
   // Opciones de zona
   const zonasDisponibles = [
     { label: "Seleccionar zona", value: "" },
@@ -150,6 +154,71 @@ const HomeP = () => {
     if (latitude < 3.45 && longitude < -76.53) return "Sur"
     if (latitude > 3.45 && longitude > -76.53) return "Oriente"
     return "Occidente"
+  }
+
+  // 🔥 FUNCIÓN MEJORADA PARA PARSEAR JSON CON MANEJO DE ERRORES
+  const parseJSONSafely = (text: string) => {
+    try {
+      // Verificar si la respuesta está vacía o es null
+      if (!text || text.trim() === '') {
+        console.warn("⚠️ Respuesta vacía del servidor")
+        return { error: "Respuesta vacía", isEmpty: true }
+      }
+
+      // Intentar parsear el JSON
+      const parsed = JSON.parse(text)
+      return parsed
+    } catch (error) {
+      console.error("❌ Error al parsear JSON:", error)
+      console.error("❌ Texto recibido:", text)
+      return { error: "Error al parsear JSON", originalText: text }
+    }
+  }
+
+  // 🔥 FUNCIÓN PARA HACER FETCH CON MANEJO ROBUSTO DE ERRORES
+  const fetchWithErrorHandling = async (url: string, options: RequestInit = {}) => {
+    try {
+      console.log(`🌐 Haciendo petición a: ${url}`)
+      
+      const response = await fetch(url, {
+        ...options
+      })
+
+      // Verificar si la respuesta HTTP es exitosa
+      if (!response.ok) {
+        console.error(`❌ Error HTTP ${response.status}: ${response.statusText}`)
+        return { 
+          success: false, 
+          error: `Error HTTP ${response.status}`, 
+          status: response.status 
+        }
+      }
+
+      // Obtener el texto de la respuesta
+      const responseText = await response.text()
+      console.log(`📥 Respuesta cruda (${responseText.length} chars):`, responseText.substring(0, 200) + '...')
+
+      // Parsear JSON de forma segura
+      const parsedData = parseJSONSafely(responseText)
+      
+      if (parsedData.error) {
+        return { 
+          success: false, 
+          error: parsedData.error,
+          originalText: parsedData.originalText || responseText,
+          isEmpty: parsedData.isEmpty || false
+        }
+      }
+
+      return { success: true, data: parsedData, response }
+    } catch (error) {
+      console.error("❌ Error en fetchWithErrorHandling:", error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Error desconocido",
+        isNetworkError: true
+      }
+    }
   }
 
   // 🔥 FUNCIÓN PARA OBTENER DIRECCIÓN
@@ -217,80 +286,204 @@ const HomeP = () => {
     }
   }
 
-  //CONSULTAR VIAJE ACEPTADO
+  // 🔥 NUEVA FUNCIÓN PARA LIMPIAR COMPLETAMENTE EL FORMULARIO
+  const limpiarFormularioCompleto = async () => {
+    console.log("🧹 Limpiando formulario completo...")
+    
+    // Limpiar TODOS los campos del formulario
+    setUbicacionActual("")
+    setBarrioActual("")
+    setZonaActual("")
+    setCiudadActual("")
+    setDestinoDireccion("")
+    setDestinoBarrio("")
+    setDestinoZona("")
+    setPuntoReferencia("")
+    setValorPersonalizado("")
+    setSelectedVehicle("")
+    setRouteDistance(null)
+    setPriceEstimate(null)
+    
+    // 🔥 OBTENER NUEVA UBICACIÓN DESPUÉS DE LIMPIAR TODO
+    console.log("🔄 Obteniendo nueva ubicación después de limpiar formulario completo...")
+    await obtenerUbicacionActual()
+  }
+
+  // 🔥 FUNCIÓN MEJORADA PARA PARAR POLLING
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+      console.log("🛑 Polling detenido")
+    }
+  }
+
+  // 🔥 FUNCIÓN MEJORADA PARA INICIAR POLLING
+  const startPolling = (callback: () => void, interval: number = 5000) => {
+    stopPolling() // Detener cualquier polling anterior
+    
+    console.log(`🔄 Iniciando polling cada ${interval}ms`)
+    
+    // Ejecutar inmediatamente
+    callback()
+    
+    // Configurar intervalo
+    pollingIntervalRef.current = setInterval(callback, interval)
+  }
+
+  //CONSULTAR VIAJE ACEPTADO - VERSIÓN CORREGIDA CON MANEJO DE ERRORES
   const consultarViajeAceptado = async () => {
     try {
       setIsLoadingAcceptedTrip(true)
       const token = await AsyncStorage.getItem("token")
+      
+      if (!token) {
+        console.error("❌ No hay token disponible")
+        setAcceptedTrip(null)
+        return
+      }
+
       console.log("🟡 Consultando viaje aceptado...")
 
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
+      // 🔥 USAR LA NUEVA FUNCIÓN DE FETCH CON MANEJO DE ERRORES
+      const result = await fetchWithErrorHandling(
+        "https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
 
-      const data = await response.json()
-      console.log("🟡 Respuesta viaje aceptado:", data)
+      // 🔥 MANEJO ROBUSTO DE ERRORES
+      if (!result.success) {
+        if (result.isEmpty) {
+          console.log("ℹ️ Respuesta vacía del servidor - no hay viajes")
+          setAcceptedTrip(null)
+          return
+        }
+        
+        if (result.isNetworkError) {
+          console.error("❌ Error de red al consultar viaje:", result.error)
+          return // No cambiar el estado si es error de red
+        }
+
+        console.error("❌ Error al verificar estado del viaje:", result.error)
+        return
+      }
+
+      const data = result.data
+      console.log("🟡 Respuesta viaje aceptado parseada:", JSON.stringify(data, null, 2))
 
       // ✅ Si hay viaje aceptado o finalizado
-      if (response.ok && (data.viaje_aceptado || data.viaje_finalizado)) {
+      if (data.viaje_aceptado || data.viaje_finalizado) {
 
         // 🔥 MANEJO DE VIAJES FINALIZADOS
         if (data.viaje_finalizado) {
           console.log("✅ Viaje finalizado encontrado")
           
-          // Mostrar alert de finalización SIEMPRE que haya un viaje finalizado
-          // Sin importar si había un viaje aceptado previo o no
-          const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
-          
-          Alert.alert(
-            "¡Viaje finalizado!", // 🎉 TÍTULO CORRECTO
-            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} \n\n¡Gracias por usar Pink Drivers!`,
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  // Limpiar todos los estados relacionados con el viaje
-                  setAcceptedTrip(null)
-                  setIsWaitingForDriver(false)
-                  setShowContraoferta(false)
-                  setContraofertaData(null)
-                  console.log("🎉 Viaje completado exitosamente")
+          // Solo mostrar alert si no hemos mostrado este viaje finalizado antes
+          if (!acceptedTrip || acceptedTrip.id !== data.viaje_finalizado.id) {
+            const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
+            
+            stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
+            
+            Alert.alert(
+              "¡Viaje finalizado!",
+              `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} \n\n¡Gracias por usar Pink Drivers!`,
+              [
+                {
+                  text: "OK",
+                  onPress: async () => {
+                    setAcceptedTrip(null)
+                    setIsWaitingForDriver(false)
+                    setShowContraoferta(false)
+                    setContraofertaData(null)
+                    lastViajeIdRef.current = null
+                    await limpiarFormularioCompleto()
+                    console.log("🎉 Viaje completado exitosamente y formulario completamente limpiado")
+                  }
                 }
-              }
-            ]
-          )
-          return // Salir de la función después de manejar el viaje finalizado
-        }
-
-        // ✅ Si el viaje está cancelado por la conductora
-        if (data.viaje_aceptado && data.viaje_aceptado.estado === 'cancelado') {
-          console.log("⚠️ El viaje ha sido cancelado por la conductora")
-          Alert.alert(
-            "Viaje cancelado", // 🚫 TÍTULO PARA CANCELACIÓN
-            "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  setAcceptedTrip(null)
-                  setIsWaitingForDriver(false)
-                  setShowContraoferta(false)
-                  setContraofertaData(null)
-                }
-              }
-            ]
-          )
+              ]
+            )
+          }
           return
         }
 
-        // ✅ Si hay un viaje aceptado (activo/en proceso)
+        // ✅ VERIFICAR SI EL VIAJE ESTÁ CANCELADO
+        if (data.viaje_aceptado && data.viaje_aceptado.estado === 'cancelado') {
+          console.log("⚠️ Viaje cancelado detectado, ID:", data.viaje_aceptado.id)
+          
+          // 🔥 SOLO MOSTRAR ALERTA SI ES UN VIAJE DIFERENTE AL QUE YA PROCESAMOS
+          if (acceptedTrip && acceptedTrip.id === data.viaje_aceptado.id && acceptedTrip.estado !== 'cancelado') {
+            console.log("🚨 Viaje actual fue cancelado por la conductora")
+            
+            stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
+            
+            Alert.alert(
+              "Viaje cancelado",
+              "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
+              [
+                {
+                  text: "OK",
+                  onPress: async () => {
+                    setAcceptedTrip(null)
+                    setIsWaitingForDriver(false)
+                    setShowContraoferta(false)
+                    setContraofertaData(null)
+                    lastViajeIdRef.current = null
+                    await limpiarFormularioCompleto()
+                  }
+                }
+              ]
+            )
+          } else if (isWaitingForDriver && !acceptedTrip) {
+            console.log("🚨 Viaje solicitado fue cancelado antes de ser aceptado")
+            
+            stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
+            
+            Alert.alert(
+              "Viaje cancelado",
+              "El viaje fue cancelado. Puedes solicitar un nuevo viaje.",
+              [
+                {
+                  text: "OK",
+                  onPress: async () => {
+                    setAcceptedTrip(null)
+                    setIsWaitingForDriver(false)
+                    setShowContraoferta(false)
+                    setContraofertaData(null)
+                    lastViajeIdRef.current = null
+                    await limpiarFormularioCompleto()
+                  }
+                }
+              ]
+            )
+          } else {
+            console.log("ℹ️ Viaje cancelado anterior detectado, limpiando estados sin alerta")
+            setAcceptedTrip(null)
+            setIsWaitingForDriver(false)
+            setShowContraoferta(false)
+            setContraofertaData(null)
+            lastViajeIdRef.current = null
+          }
+          
+          return
+        }
+
+        // ✅ Si hay un viaje aceptado ACTIVO (no cancelado)
         if (data.viaje_aceptado && data.viaje_aceptado.estado !== 'cancelado') {
-          console.log("✅ Viaje aceptado encontrado:", data.viaje_aceptado.id)
-          setAcceptedTrip(data.viaje_aceptado)
+          console.log("✅ Viaje aceptado ACTIVO encontrado:", data.viaje_aceptado.id)
+          
+          // 🔥 EVITAR ACTUALIZACIONES INNECESARIAS
+          if (!acceptedTrip || acceptedTrip.id !== data.viaje_aceptado.id) {
+            console.log("🔄 Actualizando datos del viaje aceptado")
+            setAcceptedTrip(data.viaje_aceptado)
+            lastViajeIdRef.current = data.viaje_aceptado.id
+          }
+          
           setIsWaitingForDriver(false)
           setShowContraoferta(false)
           setContraofertaData(null)
@@ -298,34 +491,47 @@ const HomeP = () => {
 
       } else {
         console.log("ℹ️ No hay viaje aceptado:", data.message)
-
-        // Si antes había un viaje aceptado pero ya no hay nada → fue cancelado
+        
+        // Si antes había un viaje aceptado pero ya no hay nada → fue cancelado o finalizado
         if (acceptedTrip && !data.viaje_aceptado && !data.viaje_finalizado) {
-          console.log("⚠️ El viaje anterior desapareció - posiblemente cancelado")
-          Alert.alert(
-            "Viaje cancelado",
-            "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  setAcceptedTrip(null)
-                  setIsWaitingForDriver(false)
-                  setShowContraoferta(false)
-                  setContraofertaData(null)
+          console.log("⚠️ El viaje anterior desapareció - posiblemente cancelado o finalizado")
+          
+          if (acceptedTrip.estado !== 'cancelado') {
+            stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
+            
+            Alert.alert(
+              "Viaje cancelado",
+              "Tu viaje fue cancelado. Puedes solicitar un nuevo viaje.",
+              [
+                {
+                  text: "OK",
+                  onPress: async () => {
+                    setAcceptedTrip(null)
+                    setIsWaitingForDriver(false)
+                    setShowContraoferta(false)
+                    setContraofertaData(null)
+                    lastViajeIdRef.current = null
+                    await limpiarFormularioCompleto()
+                  }
                 }
-              }
-            ]
-          )
+              ]
+            )
+          } else {
+            setAcceptedTrip(null)
+            setIsWaitingForDriver(false)
+            setShowContraoferta(false)
+            setContraofertaData(null)
+            lastViajeIdRef.current = null
+          }
         } else {
-          // No había viaje anterior, simplemente limpiar
           setAcceptedTrip(null)
+          lastViajeIdRef.current = null
         }
       }
 
     } catch (error) {
       console.error("❌ Error al consultar viaje aceptado:", error)
-      setAcceptedTrip(null)
+      // No cambiar el estado en caso de error de red/conexión
     } finally {
       setIsLoadingAcceptedTrip(false)
     }
@@ -341,21 +547,19 @@ const HomeP = () => {
       try {
         await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced, // Cambiado de High a Balanced
-            timeInterval: 30000, // Cada 30 segundos (más lento)
-            distanceInterval: 100, // Cada 100 metros (más distancia)
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 30000, // Cada 30 segundos
+            distanceInterval: 100, // Cada 100 metros
           },
           async (newLocation) => {
             const { latitude: newLat, longitude: newLng } = newLocation.coords
             
-            // SOLO actualizar currentLocation si el cambio es significativo
             setCurrentLocation(prevLocation => {
               if (!prevLocation) return { latitude: newLat, longitude: newLng }
               
               const latDiff = Math.abs(prevLocation.latitude - newLat)
               const lngDiff = Math.abs(prevLocation.longitude - newLng)
               
-              // Solo actualizar si el cambio es significativo
               if (latDiff > 0.001 || lngDiff > 0.001) {
                 return { latitude: newLat, longitude: newLng }
               }
@@ -363,7 +567,6 @@ const HomeP = () => {
               return prevLocation
             })
 
-            // Solo actualizar dirección si los campos están vacíos o tienen valores por defecto
             if (!ubicacionActual || 
                 ubicacionActual === "Obteniendo ubicación..." || 
                 ubicacionActual === "Ubicación no encontrada" || 
@@ -377,42 +580,40 @@ const HomeP = () => {
       }
     }
 
-    // EJECUTAR SOLO UNA VEZ al montar el componente
     configurarUbicacionInicial()
-  }, []) // Array de dependencias vacío - SOLO se ejecuta una vez
+  }, [])
 
-  // useEffect para el polling
+  // 🔥 useEffect MEJORADO para el polling con mejor control
   useEffect(() => {
-    let intervalId: number
+    console.log("🔄 Estado cambió - Evaluando polling:", {
+      acceptedTrip: !!acceptedTrip,
+      isWaitingForDriver,
+      showContraoferta
+    })
 
     if (acceptedTrip) {
       console.log("🔄 Iniciando polling para viaje aceptado")
-      consultarViajeAceptado()
-     
-      intervalId = setInterval(() => {
+      startPolling(() => {
         consultarViajeAceptado()
-      }, 3000)
-     
+      }, 5000) // Cada 5 segundos para viajes aceptados
+      
     } else if (isWaitingForDriver && !showContraoferta) {
-      consultarContraoferta()
-      consultarViajeAceptado()
-
-      intervalId = setInterval(() => {
-       consultarContraoferta()
-       consultarViajeAceptado()
-     }, 5000)
-     
-    } else if (!isWaitingForDriver && !acceptedTrip) {
-      consultarViajeAceptado()
+      console.log("🔄 Iniciando polling para búsqueda de conductora")
+      startPolling(() => {
+        consultarContraoferta()
+        consultarViajeAceptado()
+      }, 7000) // Cada 7 segundos para búsqueda
+      
+    } else {
+      console.log("🛑 Deteniendo polling - no hay condiciones activas")
+      stopPolling()
     }
 
+    // Cleanup al desmontar
     return () => {
-     if (intervalId) {
-        clearInterval(intervalId)
-       console.log("🛑 Polling detenido")
-      }
-  }
- }, [isWaitingForDriver, showContraoferta, acceptedTrip])
+      stopPolling()
+    }
+  }, [isWaitingForDriver, showContraoferta, acceptedTrip?.id]) // 🔥 DEPENDENCIA MEJORADA
 
   // Function to cancel accepted trip
   const cancelarViajeAceptado = async () => {
@@ -431,7 +632,9 @@ const HomeP = () => {
               setIsLoadingAcceptedTrip(true);
               
               const token = await AsyncStorage.getItem("token");
-              const response = await fetch(
+              
+              // 🔥 USAR LA NUEVA FUNCIÓN DE FETCH CON MANEJO DE ERRORES
+              const result = await fetchWithErrorHandling(
                 "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje",
                 {
                   method: "POST",
@@ -445,9 +648,9 @@ const HomeP = () => {
                 }
               );
 
-              const data = await response.json();
-              
-              if (response.ok && data.success) {
+              if (result.success && result.data.success) {
+                stopPolling(); // 🔥 DETENER POLLING INMEDIATAMENTE
+                
                 setAcceptedTrip(null);
                 setIsLoadingAcceptedTrip(false);
                 
@@ -461,8 +664,8 @@ const HomeP = () => {
                         setIsWaitingForDriver(false);
                         setShowContraoferta(false);
                         setContraofertaData(null);
-                        // 🔥 OBTENER NUEVA UBICACIÓN DESPUÉS DE CANCELAR
-                        await limpiarFormulario();
+                        lastViajeIdRef.current = null;
+                        await limpiarFormularioCompleto();
                       }
                     }
                   ]
@@ -474,9 +677,9 @@ const HomeP = () => {
                 setIsLoadingAcceptedTrip(false);
                 Alert.alert(
                   "Error", 
-                  data.error || "No se pudo cancelar el viaje. Inténtalo de nuevo."
+                  result.data?.error || result.error || "No se pudo cancelar el viaje. Inténtalo de nuevo."
                 );
-                console.error("❌ Error al cancelar viaje:", data.error);
+                console.error("❌ Error al cancelar viaje:", result.error);
               }
               
             } catch (error) {

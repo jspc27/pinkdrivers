@@ -55,6 +55,7 @@ const LoginP = () => {
         // ✅ Guardar token en AsyncStorage
         if (data.token) {
           await AsyncStorage.setItem('token', data.token);
+          await AsyncStorage.setItem('rol', 'pasajero');
           console.log('Token guardado correctamente');
         } else {
           console.warn('No se recibió token del servidor');

@@ -122,9 +122,20 @@ const ProfileP = () => {
             <Text style={styles.optionText}>Cambiar contraseña</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.optionItem, styles.logoutButton]} onPress={() => router.push('/')}>
-            <Text style={styles.logoutText}>Cerrar sesión</Text>
-          </TouchableOpacity>
+          <TouchableOpacity
+  style={[styles.optionItem, styles.logoutButton]}
+  onPress={async () => {
+    try {
+      await AsyncStorage.removeItem('token'); // ✅ Elimina solo el token
+      router.replace('/'); // 🔁 Redirige a la pantalla inicial
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+  }}
+>
+  <Text style={styles.logoutText}>Cerrar sesión</Text>
+</TouchableOpacity>
+
         </View>
       </ScrollView>
     </View>

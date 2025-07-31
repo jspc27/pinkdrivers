@@ -6,16 +6,16 @@ import { router, useFocusEffect } from "expo-router"
 import { Camera, Check, ChevronLeft, Mail, MapPin, Phone, User } from "lucide-react-native"
 import { useCallback, useState } from "react"
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native"
 import styles from "../styles/EditDstyles"
 
@@ -102,7 +102,7 @@ const EditProfileD = () => {
 
     try {
       setSaving(true)
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=updateUser", {
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=edit_profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

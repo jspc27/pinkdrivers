@@ -158,6 +158,63 @@ const HomeDriver = () => {
       loadDriverActiveStatus()
     }
   }, [conductoraId])
+  useEffect(() => {
+  if (!acceptedRide) return
+
+  const intervalId = setInterval(async () => {
+  try {
+    const token = await AsyncStorage.getItem("token")
+    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    const text = await response.text()
+
+    if (!text) {
+  console.warn("⚠️ Respuesta vacía del servidor al consultar viaje aceptado.")
+  return
+}
+
+const data = JSON.parse(text)
+
+if (data?.viaje_aceptado?.estado === "cancelado") {
+  if (acceptedRide) {
+    // Solo mostrar alerta si antes tenías un viaje activo
+    Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
+    console.log("🔴 Viaje cancelado por la pasajera")
+  }
+  setAcceptedRide(null)
+  setRideStatus("pending")
+} else if (!data?.viaje_aceptado || data?.viaje_aceptado?.estado === "cancelado") {
+  if (acceptedRide) {
+    console.log("🔴 Viaje desaparecido o cancelado - limpiando estado")
+    Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
+  }
+  setAcceptedRide(null)
+  setRideStatus("pending")
+} else {
+  console.log("✅ Viaje sigue activo")
+  setAcceptedRide(data.viaje_aceptado)
+}
+
+
+// Si hay un viaje aceptado
+if (data.viaje_aceptado) {
+  setAcceptedRide(data.viaje_aceptado)
+    }
+
+  } catch (error) {
+    console.error("❌ Error al verificar viaje aceptado:", error)
+  }
+}, 5000)
+
+
+
+  return () => clearInterval(intervalId)
+}, [acceptedRide])
+
 
   const navigateTo = (screen: RelativePathString | ExternalPathString) => {
     cleanupPolling()
@@ -300,7 +357,6 @@ const HomeDriver = () => {
       await saveRejectedRides(newRejectedRides)
       setRideRequests((prev) => prev.filter((request) => request.id !== requestId))
       console.log(`✅ Viaje ${requestId} rechazado y guardado en memoria`)
-      Alert.alert("Viaje rechazado", "Esta solicitud no volverá a aparecer para ti.")
     } catch (error) {
       console.error("❌ Error al rechazar viaje:", error)
       setRideRequests((prev) => prev.filter((request) => request.id !== requestId))
@@ -450,14 +506,16 @@ const HomeDriver = () => {
       return
     }
 
-    const response = await fetch(
-      "https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    )
+    const currentIdsArray = rideRequests.map((r) => r.id).join(",")
+const url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&checkStates=true&currentIds=${currentIdsArray}`
+
+const response = await fetch(url, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+})
+
+
 
     const data = await response.json()
 
