@@ -158,62 +158,106 @@ const HomeDriver = () => {
       loadDriverActiveStatus()
     }
   }, [conductoraId])
-  useEffect(() => {
+
+
+useEffect(() => {
   if (!acceptedRide) return
 
   const intervalId = setInterval(async () => {
-  try {
-    const token = await AsyncStorage.getItem("token")
-    const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    try {
+      const token = await AsyncStorage.getItem("token")
+      if (!token) {
+        console.warn("⚠️ Token no disponible para verificar viaje aceptado.")
+        return
+      }
 
-    const text = await response.text()
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
-    if (!text) {
-  console.warn("⚠️ Respuesta vacía del servidor al consultar viaje aceptado.")
-  return
-}
+      const text = await response.text()
 
-const data = JSON.parse(text)
+      // Tratar respuesta vacía como cancelación
+      if (!text || text.trim() === '') {
+        console.log("🔴 Respuesta vacía - viaje cancelado")
+        Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
+        setAcceptedRide(null)
+        setRideStatus("pending")
+        return
+      }
 
-if (data?.viaje_aceptado?.estado === "cancelado") {
-  if (acceptedRide) {
-    // Solo mostrar alerta si antes tenías un viaje activo
-    Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
-    console.log("🔴 Viaje cancelado por la pasajera")
-  }
-  setAcceptedRide(null)
-  setRideStatus("pending")
-} else if (!data?.viaje_aceptado || data?.viaje_aceptado?.estado === "cancelado") {
-  if (acceptedRide) {
-    console.log("🔴 Viaje desaparecido o cancelado - limpiando estado")
-    Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
-  }
-  setAcceptedRide(null)
-  setRideStatus("pending")
-} else {
-  console.log("✅ Viaje sigue activo")
-  setAcceptedRide(data.viaje_aceptado)
-}
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (parseError) {
+        console.error("❌ Error al parsear respuesta:", parseError)
+        return
+      }
 
+      // Obtener el viaje de cualquier formato de respuesta
+      const viajeAceptado = data?.viaje_aceptado || data?.viaje
 
-// Si hay un viaje aceptado
-if (data.viaje_aceptado) {
-  setAcceptedRide(data.viaje_aceptado)
+      // Si no hay viaje o está cancelado
+      if (!viajeAceptado || viajeAceptado.estado === "cancelado" || data.success === false) {
+        console.log("🔴 Viaje no encontrado o cancelado")
+        Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
+        setAcceptedRide(null)
+        setRideStatus("pending")
+        return
+      }
+
+      // ✅ CLAVE: Mapear correctamente los datos del backend al formato RideRequest
+      const mappedRide: RideRequest = {
+        id: viajeAceptado.id.toString(),
+        passengerName: viajeAceptado.pasajera_nombre ? viajeAceptado.pasajera_nombre.split(" ")[0] : "Pasajera",
+        pickupAddress: viajeAceptado.ubicacionActual || "",
+        pickupNeighborhood: viajeAceptado.barrioActual || "",
+        pickupZone: viajeAceptado.zonaActual || "",
+        destinationAddress: viajeAceptado.destinoDireccion || "",
+        destinationNeighborhood: viajeAceptado.destinoBarrio || "",
+        destinationZone: viajeAceptado.destinoZona || "",
+        // ✅ IMPORTANTE: Convertir string a number y manejar valores undefined
+        proposedPrice: viajeAceptado.valorPersonalizado ? 
+          Number(viajeAceptado.valorPersonalizado) : 0,
+        counterOfferPrice: viajeAceptado.valor_contraoferta ? 
+          Number(viajeAceptado.valor_contraoferta) : undefined,
+        status: viajeAceptado.estado === "negociacion" ? "negotiation" : 
+                viajeAceptado.estado === "aceptado" ? "accepted" : "pending",
+        passenger: {
+          phone: viajeAceptado.pasajera_telefono || "N/A",
+          whatsapp: viajeAceptado.pasajera_telefono || "N/A",
+        }
+      }
+
+      // Verificar ID solo si el viaje anterior existe
+      if (acceptedRide && mappedRide.id !== acceptedRide.id) {
+        console.log("⚠️ ID de viaje diferente - limpiando estado")
+        setAcceptedRide(null)
+        setRideStatus("pending")
+        return
+      }
+
+      console.log("✅ Viaje sigue activo - actualizando datos")
+      setAcceptedRide(mappedRide)
+      
+      // Actualizar estado según backend
+      if (viajeAceptado.estado === "aceptado") {
+        setRideStatus("accepted")
+      } else if (viajeAceptado.estado === "en_progreso") {
+        setRideStatus("in_progress")
+      }
+
+    } catch (error) {
+      console.error("❌ Error al verificar viaje aceptado:", error)
     }
-
-  } catch (error) {
-    console.error("❌ Error al verificar viaje aceptado:", error)
-  }
-}, 5000)
-
-
+  }, 5000)
 
   return () => clearInterval(intervalId)
 }, [acceptedRide])
+
+
 
 
   const navigateTo = (screen: RelativePathString | ExternalPathString) => {
@@ -712,7 +756,12 @@ const response = await fetch(url, {
     )
   }
 
-  const renderRideRequest = ({ item }: { item: RideRequest }) => (
+  const renderRideRequest = ({ item }: { item: RideRequest }) => {
+  // ✅ VALIDACIÓN: Asegurar que los precios existen
+  const proposedPrice = item.proposedPrice || 0
+  const counterOfferPrice = item.counterOfferPrice
+
+  return (
     <View style={styles.rideRequestCard}>
       {/* Header compacto con indicador de estado */}
       <View style={styles.requestHeader}>
@@ -720,7 +769,9 @@ const response = await fetch(url, {
           <View style={styles.passengerIcon}>
             <FontAwesome name="user" size={14} color="#666" />
           </View>
-          <Text style={styles.passengerName}>{item.passengerName}</Text>
+          <Text style={styles.passengerName}>
+            {item.passengerName || "Pasajera"}
+          </Text>
           {/* Indicador de negociación */}
           {item.status === "negotiation" && (
             <View style={styles.negotiationBadge}>
@@ -729,10 +780,16 @@ const response = await fetch(url, {
           )}
         </View>
         <View style={styles.contactActions}>
-          <TouchableOpacity style={styles.whatsappButton} onPress={() => openWhatsApp(item.passenger.whatsapp)}>
+          <TouchableOpacity 
+            style={styles.whatsappButton} 
+            onPress={() => openWhatsApp(item.passenger.whatsapp)}
+          >
             <FontAwesome name="whatsapp" size={16} color="#25D366" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.callButton} onPress={() => callPassenger(item.passenger.phone)}>
+          <TouchableOpacity 
+            style={styles.callButton} 
+            onPress={() => callPassenger(item.passenger.phone)}
+          >
             <FontAwesome name="phone" size={16} color="#FF69B4" />
           </TouchableOpacity>
         </View>
@@ -746,7 +803,7 @@ const response = await fetch(url, {
             <View style={styles.locationInfo}>
               <Text style={styles.locationLabel}>ORIGEN</Text>
               <Text style={styles.locationAddress} numberOfLines={1}>
-                {item.pickupAddress}
+                {item.pickupAddress || "Dirección no disponible"}
               </Text>
               <Text style={styles.locationNeighborhood}>
                 {item.pickupNeighborhood} • {item.pickupZone}
@@ -761,7 +818,7 @@ const response = await fetch(url, {
             <View style={styles.locationInfo}>
               <Text style={styles.locationLabel}>DESTINO</Text>
               <Text style={styles.locationAddress} numberOfLines={1}>
-                {item.destinationAddress}
+                {item.destinationAddress || "Destino no disponible"}
               </Text>
               <Text style={styles.locationNeighborhood}>
                 {item.destinationNeighborhood} • {item.destinationZone}
@@ -774,15 +831,22 @@ const response = await fetch(url, {
       {/* Info del viaje con precios */}
       <View style={styles.priceMainContainer}>
         <View style={styles.priceLeftSection}>
-          {item.status === "negotiation" && item.counterOfferPrice ? (
+          {item.status === "negotiation" && counterOfferPrice ? (
             <View style={styles.priceNegotiationContainer}>
-              <Text style={styles.originalPrice}>${item.proposedPrice.toLocaleString()}</Text>
-              <Text style={styles.counterOfferPrice}>→ ${item.counterOfferPrice.toLocaleString()}</Text>
+              <Text style={styles.originalPrice}>
+                ${proposedPrice.toLocaleString()}
+              </Text>
+              <Text style={styles.counterOfferPrice}>
+                → ${counterOfferPrice.toLocaleString()}
+              </Text>
             </View>
           ) : (
-            <Text style={styles.priceAmount}>${item.proposedPrice.toLocaleString()}</Text>
+            <Text style={styles.priceAmount}>
+              ${proposedPrice.toLocaleString()}
+            </Text>
           )}
         </View>
+        
         {/* Botón de negociación o campos de edición */}
         {item.status === "negotiation" ? (
           <View style={styles.waitingResponse}>
@@ -793,21 +857,30 @@ const response = await fetch(url, {
           <View style={styles.priceEditContainer}>
             <TextInput
               style={styles.priceInput}
-              value={counterOfferPrice}
+              value={counterOfferPrice !== undefined ? counterOfferPrice.toString() : ""}
               onChangeText={setCounterOfferPrice}
               keyboardType="numeric"
               placeholder="Precio"
               autoFocus
             />
-            <TouchableOpacity style={styles.submitPriceButton} onPress={() => submitCounterOffer(item.id)}>
+            <TouchableOpacity 
+              style={styles.submitPriceButton} 
+              onPress={() => submitCounterOffer(item.id)}
+            >
               <FontAwesome name="check" size={12} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelPriceButton} onPress={() => setEditingPrice(null)}>
+            <TouchableOpacity 
+              style={styles.cancelPriceButton} 
+              onPress={() => setEditingPrice(null)}
+            >
               <FontAwesome name="times" size={12} color="#666" />
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.negotiateButton} onPress={() => handlePriceEdit(item.id, item.proposedPrice)}>
+          <TouchableOpacity 
+            style={styles.negotiateButton} 
+            onPress={() => handlePriceEdit(item.id, proposedPrice)}
+          >
             <FontAwesome name="edit" size={12} color="#FF69B4" />
             <Text style={styles.negotiateButtonText}>Negociar</Text>
           </TouchableOpacity>
@@ -816,21 +889,31 @@ const response = await fetch(url, {
 
       {/* Botones de acción */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.rejectButton} onPress={() => rejectRide(item.id)}>
+        <TouchableOpacity 
+          style={styles.rejectButton} 
+          onPress={() => rejectRide(item.id)}
+        >
           <Text style={styles.rejectButtonText}>Rechazar</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.acceptButton, item.status === "negotiation" && styles.acceptButtonDisabled]}
+          style={[
+            styles.acceptButton, 
+            item.status === "negotiation" && styles.acceptButtonDisabled
+          ]}
           onPress={() => acceptRide(item.id)}
           disabled={item.status === "negotiation"}
         >
-          <Text style={[styles.acceptButtonText, item.status === "negotiation" && styles.acceptButtonTextDisabled]}>
+          <Text style={[
+            styles.acceptButtonText, 
+            item.status === "negotiation" && styles.acceptButtonTextDisabled
+          ]}>
             {item.status === "negotiation" ? "En negociación" : "Aceptar"}
           </Text>
         </TouchableOpacity>
       </View>
     </View>
   )
+}
 
   return (
     <LinearGradient colors={["#FFE4F3", "#FFC1E3"]} style={styles.container}>
