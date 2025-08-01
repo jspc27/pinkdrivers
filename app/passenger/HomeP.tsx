@@ -331,7 +331,7 @@ const HomeP = () => {
     pollingIntervalRef.current = setInterval(callback, interval)
   }
 
-  //CONSULTAR VIAJE ACEPTADO - VERSIÓN CORREGIDA CON MANEJO DE ERRORES
+  //CONSULTAR VIAJE ACEPTADO - VERSIÓN CORREGIDA CON MANEJO DE ERRORES Y ALERTA CORRECTA
   const consultarViajeAceptado = async () => {
     try {
       setIsLoadingAcceptedTrip(true)
@@ -377,45 +377,43 @@ const HomeP = () => {
       const data = result.data
       console.log("🟡 Respuesta viaje aceptado parseada:", JSON.stringify(data, null, 2))
 
-      
-
-      // ✅ Si hay viaje aceptado o finalizado
-      if (data.viaje_aceptado || data.viaje_finalizado) {
-
-        // 🔥 MANEJO DE VIAJES FINALIZADOS
-        if (data.viaje_finalizado) {
-          console.log("✅ Viaje finalizado encontrado")
+      // 🔥 PRIORIDAD 1: VIAJE FINALIZADO (DEBE PROCESARSE PRIMERO)
+      if (data.viaje_finalizado) {
+        console.log("✅ Viaje finalizado encontrado")
+        
+        // Solo mostrar alert si no hemos mostrado este viaje finalizado antes
+        if (!acceptedTrip || acceptedTrip.id !== data.viaje_finalizado.id || acceptedTrip.estado !== 'finalizado') {
+          const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
           
-          // Solo mostrar alert si no hemos mostrado este viaje finalizado antes
-          if (!acceptedTrip || acceptedTrip.id !== data.viaje_finalizado.id) {
-            const firstName = data.viaje_finalizado.conductora_nombre.split(" ")[0]
-            
-            stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
-            
-            Alert.alert(
-              "¡Viaje finalizado!",
-              `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} \n\n¡Gracias por usar Pink Drivers!`,
-              [
-                {
-                  text: "OK",
-                  onPress: async () => {
-                    setAcceptedTrip(null)
-                    setIsWaitingForDriver(false)
-                    setShowContraoferta(false)
-                    setContraofertaData(null)
-                    lastViajeIdRef.current = null
-                    await limpiarFormularioCompleto()
-                    console.log("🎉 Viaje completado exitosamente y formulario completamente limpiado")
-                  }
+          stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
+          
+          Alert.alert(
+            "¡Viaje finalizado!",
+            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} \n\n¡Gracias por usar Pink Drivers!`,
+            [
+              {
+                text: "OK",
+                onPress: async () => {
+                  setAcceptedTrip(null)
+                  setIsWaitingForDriver(false)
+                  setShowContraoferta(false)
+                  setContraofertaData(null)
+                  lastViajeIdRef.current = null
+                  await limpiarFormularioCompleto()
+                  console.log("🎉 Viaje completado exitosamente y formulario completamente limpiado")
                 }
-              ]
-            )
-          }
-          return
+              }
+            ]
+          )
         }
+        return // 🔥 IMPORTANTE: SALIR AQUÍ PARA NO PROCESAR OTRAS CONDICIONES
+      }
 
+      // 🔥 PRIORIDAD 2: VIAJE ACEPTADO ACTIVO
+      if (data.viaje_aceptado) {
+        
         // ✅ VERIFICAR SI EL VIAJE ESTÁ CANCELADO
-        if (data.viaje_aceptado && data.viaje_aceptado.estado === 'cancelado') {
+        if (data.viaje_aceptado.estado === 'cancelado') {
           console.log("⚠️ Viaje cancelado detectado, ID:", data.viaje_aceptado.id)
           
           // 🔥 SOLO MOSTRAR ALERTA SI ES UN VIAJE DIFERENTE AL QUE YA PROCESAMOS
@@ -425,7 +423,7 @@ const HomeP = () => {
             stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
             
             Alert.alert(
-              "Viaje Finalizado",
+              "Viaje cancelado",
               "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
               [
                 {
@@ -472,11 +470,11 @@ const HomeP = () => {
             lastViajeIdRef.current = null
           }
           
-          return
+          return // 🔥 IMPORTANTE: SALIR AQUÍ PARA NO PROCESAR MÁS CONDICIONES
         }
 
         // ✅ Si hay un viaje aceptado ACTIVO (no cancelado)
-        if (data.viaje_aceptado && data.viaje_aceptado.estado !== 'cancelado') {
+        if (data.viaje_aceptado.estado !== 'cancelado') {
           console.log("✅ Viaje aceptado ACTIVO encontrado:", data.viaje_aceptado.id)
           
           // 🔥 EVITAR ACTUALIZACIONES INNECESARIAS
@@ -489,46 +487,50 @@ const HomeP = () => {
           setIsWaitingForDriver(false)
           setShowContraoferta(false)
           setContraofertaData(null)
+          return // 🔥 IMPORTANTE: SALIR AQUÍ
         }
+      }
 
-      } else {
-        console.log("ℹ️ No hay viaje aceptado:", data.message)
+      // 🔥 PRIORIDAD 3: NO HAY VIAJES (CASO POR DEFECTO)
+      console.log("ℹ️ No hay viaje aceptado ni finalizado:", data.message || "Sin respuesta")
+      
+      // 🔥 SOLO PROCESAR "DESAPARICIÓN" SI ANTES HABÍA UN VIAJE ACEPTADO
+      if (acceptedTrip && !data.viaje_aceptado && !data.viaje_finalizado) {
+        console.log("⚠️ El viaje anterior desapareció - posiblemente fue finalizado de forma inesperada")
         
-        // Si antes había un viaje aceptado pero ya no hay nada → fue cancelado o finalizado
-        if (acceptedTrip && !data.viaje_aceptado && !data.viaje_finalizado) {
-          console.log("⚠️ El viaje anterior desapareció - posiblemente cancelado o finalizado")
+        // 🔥 VERIFICAR SI EL VIAJE ANTERIOR NO ESTABA MARCADO COMO CANCELADO O FINALIZADO
+        if (acceptedTrip.estado !== 'cancelado' && acceptedTrip.estado !== 'finalizado') {
+          stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
           
-          if (acceptedTrip.estado !== 'cancelado') {
-            stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
-            
-            Alert.alert(
-              "Viaje cancelado",
-              "Tu viaje fue cancelado. Puedes solicitar un nuevo viaje.",
-              [
-                {
-                  text: "OK",
-                  onPress: async () => {
-                    setAcceptedTrip(null)
-                    setIsWaitingForDriver(false)
-                    setShowContraoferta(false)
-                    setContraofertaData(null)
-                    lastViajeIdRef.current = null
-                    await limpiarFormularioCompleto()
-                  }
+          Alert.alert(
+            "Viaje finalizado",
+            "Tu viaje ha sido completado. ¡Gracias por usar Pink Drivers!",
+            [
+              {
+                text: "OK",
+                onPress: async () => {
+                  setAcceptedTrip(null)
+                  setIsWaitingForDriver(false)
+                  setShowContraoferta(false)
+                  setContraofertaData(null)
+                  lastViajeIdRef.current = null
+                  await limpiarFormularioCompleto()
                 }
-              ]
-            )
-          } else {
-            setAcceptedTrip(null)
-            setIsWaitingForDriver(false)
-            setShowContraoferta(false)
-            setContraofertaData(null)
-            lastViajeIdRef.current = null
-          }
+              }
+            ]
+          )
         } else {
+          // Limpiar estados sin mostrar alerta
           setAcceptedTrip(null)
+          setIsWaitingForDriver(false)
+          setShowContraoferta(false)
+          setContraofertaData(null)
           lastViajeIdRef.current = null
         }
+      } else {
+        // No había viaje anterior, simplemente limpiar estados
+        setAcceptedTrip(null)
+        lastViajeIdRef.current = null
       }
 
     } catch (error) {
