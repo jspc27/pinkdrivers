@@ -377,6 +377,8 @@ const HomeP = () => {
       const data = result.data
       console.log("🟡 Respuesta viaje aceptado parseada:", JSON.stringify(data, null, 2))
 
+      
+
       // ✅ Si hay viaje aceptado o finalizado
       if (data.viaje_aceptado || data.viaje_finalizado) {
 
@@ -423,7 +425,7 @@ const HomeP = () => {
             stopPolling() // 🔥 DETENER POLLING INMEDIATAMENTE
             
             Alert.alert(
-              "Viaje cancelado",
+              "Viaje Finalizado",
               "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
               [
                 {

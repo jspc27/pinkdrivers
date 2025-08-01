@@ -159,106 +159,102 @@ const HomeDriver = () => {
     }
   }, [conductoraId])
 
+  useEffect(() => {
+    if (!acceptedRide) return
 
-useEffect(() => {
-  if (!acceptedRide) return
-
-  const intervalId = setInterval(async () => {
-    try {
-      const token = await AsyncStorage.getItem("token")
-      if (!token) {
-        console.warn("⚠️ Token no disponible para verificar viaje aceptado.")
-        return
-      }
-
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      const text = await response.text()
-
-      // Tratar respuesta vacía como cancelación
-      if (!text || text.trim() === '') {
-        console.log("🔴 Respuesta vacía - viaje cancelado")
-        Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
-        setAcceptedRide(null)
-        setRideStatus("pending")
-        return
-      }
-
-      let data
+    const intervalId = setInterval(async () => {
       try {
-        data = JSON.parse(text)
-      } catch (parseError) {
-        console.error("❌ Error al parsear respuesta:", parseError)
-        return
-      }
-
-      // Obtener el viaje de cualquier formato de respuesta
-      const viajeAceptado = data?.viaje_aceptado || data?.viaje
-
-      // Si no hay viaje o está cancelado
-      if (!viajeAceptado || viajeAceptado.estado === "cancelado" || data.success === false) {
-        console.log("🔴 Viaje no encontrado o cancelado")
-        Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
-        setAcceptedRide(null)
-        setRideStatus("pending")
-        return
-      }
-
-      // ✅ CLAVE: Mapear correctamente los datos del backend al formato RideRequest
-      const mappedRide: RideRequest = {
-        id: viajeAceptado.id.toString(),
-        passengerName: viajeAceptado.pasajera_nombre ? viajeAceptado.pasajera_nombre.split(" ")[0] : "Pasajera",
-        pickupAddress: viajeAceptado.ubicacionActual || "",
-        pickupNeighborhood: viajeAceptado.barrioActual || "",
-        pickupZone: viajeAceptado.zonaActual || "",
-        destinationAddress: viajeAceptado.destinoDireccion || "",
-        destinationNeighborhood: viajeAceptado.destinoBarrio || "",
-        destinationZone: viajeAceptado.destinoZona || "",
-        // ✅ IMPORTANTE: Convertir string a number y manejar valores undefined
-        proposedPrice: viajeAceptado.valorPersonalizado ? 
-          Number(viajeAceptado.valorPersonalizado) : 0,
-        counterOfferPrice: viajeAceptado.valor_contraoferta ? 
-          Number(viajeAceptado.valor_contraoferta) : undefined,
-        status: viajeAceptado.estado === "negociacion" ? "negotiation" : 
-                viajeAceptado.estado === "aceptado" ? "accepted" : "pending",
-        passenger: {
-          phone: viajeAceptado.pasajera_telefono || "N/A",
-          whatsapp: viajeAceptado.pasajera_telefono || "N/A",
+        const token = await AsyncStorage.getItem("token")
+        if (!token) {
+          console.warn("⚠️ Token no disponible para verificar viaje aceptado.")
+          return
         }
+
+        const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        const text = await response.text()
+
+        // Tratar respuesta vacía como cancelación
+        if (!text || text.trim() === '') {
+          console.log("🔴 Respuesta vacía - viaje cancelado")
+          Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
+          setAcceptedRide(null)
+          setRideStatus("pending")
+          return
+        }
+
+        let data
+        try {
+          data = JSON.parse(text)
+        } catch (parseError) {
+          console.error("❌ Error al parsear respuesta:", parseError)
+          return
+        }
+
+        // Obtener el viaje de cualquier formato de respuesta
+        const viajeAceptado = data?.viaje_aceptado || data?.viaje
+
+        // Si no hay viaje o está cancelado
+        if (!viajeAceptado || viajeAceptado.estado === "cancelado" || data.success === false) {
+          console.log("🔴 Viaje no encontrado o cancelado")
+          Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
+          setAcceptedRide(null)
+          setRideStatus("pending")
+          return
+        }
+
+        // ✅ CLAVE: Mapear correctamente los datos del backend al formato RideRequest
+        const mappedRide: RideRequest = {
+          id: viajeAceptado.id.toString(),
+          passengerName: viajeAceptado.pasajera_nombre ? viajeAceptado.pasajera_nombre.split(" ")[0] : "Pasajera",
+          pickupAddress: viajeAceptado.ubicacionActual || "",
+          pickupNeighborhood: viajeAceptado.barrioActual || "",
+          pickupZone: viajeAceptado.zonaActual || "",
+          destinationAddress: viajeAceptado.destinoDireccion || "",
+          destinationNeighborhood: viajeAceptado.destinoBarrio || "",
+          destinationZone: viajeAceptado.destinoZona || "",
+          // ✅ IMPORTANTE: Convertir string a number y manejar valores undefined
+          proposedPrice: viajeAceptado.valorPersonalizado ? 
+            Number(viajeAceptado.valorPersonalizado) : 0,
+          counterOfferPrice: viajeAceptado.valor_contraoferta ? 
+            Number(viajeAceptado.valor_contraoferta) : undefined,
+          status: viajeAceptado.estado === "negociacion" ? "negotiation" : 
+                  viajeAceptado.estado === "aceptado" ? "accepted" : "pending",
+          passenger: {
+            phone: viajeAceptado.pasajera_telefono || "N/A",
+            whatsapp: viajeAceptado.pasajera_telefono || "N/A",
+          }
+        }
+
+        // Verificar ID solo si el viaje anterior existe
+        if (acceptedRide && mappedRide.id !== acceptedRide.id) {
+          console.log("⚠️ ID de viaje diferente - limpiando estado")
+          setAcceptedRide(null)
+          setRideStatus("pending")
+          return
+        }
+
+        console.log("✅ Viaje sigue activo - actualizando datos")
+        setAcceptedRide(mappedRide)
+        
+        // Actualizar estado según backend
+        if (viajeAceptado.estado === "aceptado") {
+          setRideStatus("accepted")
+        } else if (viajeAceptado.estado === "en_progreso") {
+          setRideStatus("in_progress")
+        }
+
+      } catch (error) {
+        console.error("❌ Error al verificar viaje aceptado:", error)
       }
+    }, 5000)
 
-      // Verificar ID solo si el viaje anterior existe
-      if (acceptedRide && mappedRide.id !== acceptedRide.id) {
-        console.log("⚠️ ID de viaje diferente - limpiando estado")
-        setAcceptedRide(null)
-        setRideStatus("pending")
-        return
-      }
-
-      console.log("✅ Viaje sigue activo - actualizando datos")
-      setAcceptedRide(mappedRide)
-      
-      // Actualizar estado según backend
-      if (viajeAceptado.estado === "aceptado") {
-        setRideStatus("accepted")
-      } else if (viajeAceptado.estado === "en_progreso") {
-        setRideStatus("in_progress")
-      }
-
-    } catch (error) {
-      console.error("❌ Error al verificar viaje aceptado:", error)
-    }
-  }, 5000)
-
-  return () => clearInterval(intervalId)
-}, [acceptedRide])
-
-
-
+    return () => clearInterval(intervalId)
+  }, [acceptedRide])
 
   const navigateTo = (screen: RelativePathString | ExternalPathString) => {
     cleanupPolling()
@@ -534,113 +530,234 @@ useEffect(() => {
     }
   }
 
- const fetchPendingRides = async () => {
-  if (acceptedRide) return
+  // ✅ FUNCIÓN MEJORADA PARA MANEJAR CANCELACIONES EN TIEMPO REAL
+  const fetchPendingRides = async () => {
+    if (acceptedRide) return
 
-  const now = Date.now()
-  if (now - lastFetchTimestamp.current < 2500) {
-    return
-  }
-  lastFetchTimestamp.current = now
-
-  try {
-    const token = await AsyncStorage.getItem("token")
-    if (!token) {
-      console.warn("⚠️ Token no disponible para viajes pendientes.")
+    const now = Date.now()
+    if (now - lastFetchTimestamp.current < 2000) { // Reducido a 2 segundos para mayor velocidad
       return
     }
+    lastFetchTimestamp.current = now
 
-    const currentIdsArray = rideRequests.map((r) => r.id).join(",")
-const url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&checkStates=true&currentIds=${currentIdsArray}`
-
-const response = await fetch(url, {
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
-})
-
-
-
-    const data = await response.json()
-
-    if (response.ok) {
-      // 🚫 Cancelaciones
-      if (data.cancelled_ids && data.cancelled_ids.length > 0) {
-        console.log("🚫 Viajes cancelados detectados:", data.cancelled_ids)
-        setRideRequests((prev) =>
-          prev.filter((ride) => !data.cancelled_ids.includes(Number.parseInt(ride.id))),
-        )
+    try {
+      const token = await AsyncStorage.getItem("token")
+      if (!token) {
+        console.warn("⚠️ Token no disponible para viajes pendientes.")
+        return
       }
 
-      // ❌ Contraofertas rechazadas
-      if (data.rejected_counteroffers && data.rejected_counteroffers.length > 0) {
-        console.log("❌ Contraofertas rechazadas:", data.rejected_counteroffers)
-        setRideRequests((prev) =>
-          prev.filter((ride) => !data.rejected_counteroffers.includes(Number.parseInt(ride.id))),
-        )
-
-        const newRejectedRides = new Set(rejectedRides)
-        data.rejected_counteroffers.forEach((id: number) => {
-          newRejectedRides.add(id.toString())
-        })
-        setRejectedRides(newRejectedRides)
-        await saveRejectedRides(newRejectedRides)
-      }
-
-      // ✅ Agregar nuevos viajes (ya filtrados por tipo_vehiculo)
-      if (data.viajes?.length) {
-        const formattedRides: RideRequest[] = data.viajes
-          .map((viaje: any) => ({
-            id: viaje.id.toString(),
-            passengerName: viaje.pasajero_nombre.split(" ")[0],
-            pickupAddress: viaje.ubicacionActual,
-            pickupNeighborhood: viaje.barrioActual,
-            pickupZone: viaje.zonaActual,
-            destinationAddress: viaje.destinoDireccion,
-            destinationNeighborhood: viaje.destinoBarrio,
-            destinationZone: viaje.destinoZona,
-            proposedPrice: Number(viaje.valorPersonalizado ?? 0),
-            counterOfferPrice: viaje.valor_contraoferta
-              ? Number(viaje.valor_contraoferta)
-              : undefined,
-            status: viaje.estado === "negociacion" ? "negotiation" : "pending",
-            passenger: {
-              phone: "N/A",
-              whatsapp: "N/A",
-            },
-          }))
-          .filter((ride: RideRequest) => {
-            const isRejected = rejectedRides.has(ride.id)
-            if (isRejected) {
-              console.log(`🚫 Viaje ${ride.id} filtrado (rechazado previamente)`)
+      // 🔥 PASO 1: Verificar estado de viajes actuales ANTES de obtener nuevos
+      const currentRideIds = rideRequests.map(ride => ride.id)
+      
+      if (currentRideIds.length > 0) {
+        console.log("🔍 Verificando estado de viajes actuales:", currentRideIds)
+        
+        // Verificar cada viaje individualmente para detectar cancelaciones
+        for (const rideId of currentRideIds) {
+          try {
+            const statusResponse = await fetch(
+              `https://www.pinkdrivers.com/api-rest/index.php?action=verificar_estado_viaje&viaje_id=${rideId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            )
+            
+            if (!statusResponse.ok) {
+              console.log(`🚫 Viaje ${rideId} no encontrado - probablemente cancelado`)
+              setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
+              continue
             }
-            return !isRejected
+
+            const statusData = await statusResponse.json()
+            console.log(`📊 Estado del viaje ${rideId}:`, statusData)
+            
+            // Múltiples condiciones para detectar cancelación
+            if (
+              !statusData.success ||
+              statusData.estado === "cancelado" || 
+              statusData.cancelled === true ||
+              statusData.status === "cancelled" ||
+              statusData.message?.includes("cancelado") ||
+              statusData.message?.includes("No encontrado")
+            ) {
+              console.log(`🚫 Viaje ${rideId} cancelado - eliminando inmediatamente`)
+              setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
+              
+              const newRejectedRides = new Set(rejectedRides)
+              newRejectedRides.add(rideId)
+              setRejectedRides(newRejectedRides)
+              await saveRejectedRides(newRejectedRides)
+            }
+          } catch (statusError) {
+            console.log(`🚫 Error consultando viaje ${rideId} - asumiendo cancelado:`, statusError)
+            // Si hay error al consultar, asumir que está cancelado
+            setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
+          }
+        }
+      }
+
+      // 🔥 PASO 2: Obtener lista actualizada del servidor
+      const currentIdsForServer = rideRequests.map((r) => r.id).join(",")
+      const url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&checkStates=true&currentIds=${currentIdsForServer}&timestamp=${now}`
+
+      console.log("📡 Consultando servidor:", url)
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const data = await response.json()
+      console.log("📥 Respuesta del servidor:", data)
+
+      if (response.ok) {
+        let hasChanges = false
+
+        // 🚫 CANCELACIONES del servidor
+        const cancelledIds = data.cancelled_ids || []
+        
+        if (cancelledIds.length > 0) {
+          console.log("🚫 Cancelaciones reportadas por servidor:", cancelledIds)
+          
+          const cancelledIdsString = cancelledIds.map((id: any) => id.toString())
+          
+          setRideRequests((prev) => {
+            const filteredRides = prev.filter((ride) => !cancelledIdsString.includes(ride.id))
+            if (filteredRides.length !== prev.length) {
+              console.log(`🗑️ Eliminando ${prev.length - filteredRides.length} viajes cancelados por servidor`)
+              hasChanges = true
+            }
+            return filteredRides
           })
 
-        // 🧠 Mezclar con lista existente
-        setRideRequests((prev) =>
-          formattedRides.reduce((updatedList, newRide) => {
-            const existingIndex = updatedList.findIndex((r) => r.id === newRide.id)
-            if (existingIndex !== -1) {
-              updatedList[existingIndex] = {
-                ...updatedList[existingIndex],
-                status: newRide.status,
-                counterOfferPrice: newRide.counterOfferPrice,
-              }
-            } else {
-              updatedList.push(newRide)
+          const newRejectedRides = new Set(rejectedRides)
+          cancelledIdsString.forEach((id: string) => {
+            newRejectedRides.add(id)
+          })
+          setRejectedRides(newRejectedRides)
+          await saveRejectedRides(newRejectedRides)
+        }
+
+        // ❌ Contraofertas rechazadas
+        const rejectedCounterOffers = data.rejected_counteroffers || []
+        
+        if (rejectedCounterOffers.length > 0) {
+          console.log("❌ Contraofertas rechazadas:", rejectedCounterOffers)
+          
+          const rejectedCounterOffersString = rejectedCounterOffers.map((id: any) => id.toString())
+          
+          setRideRequests((prev) => {
+            const filteredRides = prev.filter((ride) => !rejectedCounterOffersString.includes(ride.id))
+            if (filteredRides.length !== prev.length) {
+              console.log(`🗑️ Eliminando ${prev.length - filteredRides.length} contraofertas rechazadas`)
+              hasChanges = true
             }
+            return filteredRides
+          })
+
+          const newRejectedRides = new Set(rejectedRides)
+          rejectedCounterOffersString.forEach((id: string) => {
+            newRejectedRides.add(id)
+          })
+          setRejectedRides(newRejectedRides)
+          await saveRejectedRides(newRejectedRides)
+        }
+
+        // ✅ Procesar nuevos viajes o actualizaciones
+        if (data.viajes?.length) {
+          const formattedRides: RideRequest[] = data.viajes
+            .filter((viaje: any) => {
+              // Filtrar viajes cancelados o inválidos
+              return viaje.estado !== "cancelado" && 
+                     viaje.estado !== "finalizado" && 
+                     viaje.estado !== "aceptado"
+            })
+            .map((viaje: any) => ({
+              id: viaje.id.toString(),
+              passengerName: viaje.pasajero_nombre ? viaje.pasajero_nombre.split(" ")[0] : "Pasajera",
+              pickupAddress: viaje.ubicacionActual || "",
+              pickupNeighborhood: viaje.barrioActual || "",
+              pickupZone: viaje.zonaActual || "",
+              destinationAddress: viaje.destinoDireccion || "",
+              destinationNeighborhood: viaje.destinoBarrio || "",
+              destinationZone: viaje.destinoZona || "",
+              proposedPrice: Number(viaje.valorPersonalizado ?? 0),
+              counterOfferPrice: viaje.valor_contraoferta
+                ? Number(viaje.valor_contraoferta)
+                : undefined,
+              status: viaje.estado === "negociacion" ? "negotiation" : "pending",
+              passenger: {
+                phone: "N/A",
+                whatsapp: "N/A",
+              },
+            }))
+            .filter((ride: RideRequest) => {
+              const isRejected = rejectedRides.has(ride.id)
+              if (isRejected) {
+                console.log(`🚫 Viaje ${ride.id} filtrado (rechazado previamente)`)
+              }
+              return !isRejected
+            })
+
+          console.log("✅ Viajes válidos recibidos:", formattedRides.length)
+
+          // Actualizar lista con validación adicional
+          setRideRequests((prev) => {
+            // Si no hay viajes nuevos válidos, limpiar la lista
+            if (formattedRides.length === 0) {
+              if (prev.length > 0) {
+                console.log("🧹 No hay viajes válidos - limpiando lista")
+                hasChanges = true
+              }
+              return []
+            }
+
+            // Combinar viajes existentes con nuevos
+            const updatedList = formattedRides.reduce((accList, newRide) => {
+              const existingIndex = accList.findIndex((r) => r.id === newRide.id)
+              if (existingIndex !== -1) {
+                // Actualizar viaje existente
+                accList[existingIndex] = {
+                  ...accList[existingIndex],
+                  status: newRide.status,
+                  counterOfferPrice: newRide.counterOfferPrice,
+                }
+              } else {
+                // Agregar nuevo viaje
+                accList.push(newRide)
+                hasChanges = true
+              }
+              return accList
+            }, [...prev])
+
+            if (hasChanges) {
+              console.log(`🔄 Lista actualizada: ${prev.length} → ${updatedList.length}`)
+            }
+
             return updatedList
-          }, [...prev]),
-        )
+          })
+        } else {
+          // Si no hay viajes en la respuesta, limpiar la lista
+          setRideRequests((prev) => {
+            if (prev.length > 0) {
+              console.log("🧹 No hay viajes en respuesta - limpiando lista")
+              return []
+            }
+            return prev
+          })
+        }
+
+      } else {
+        console.warn("⚠️ Error de servidor al consultar viajes:", data)
       }
-    } else {
-      console.warn("⚠️ Error de servidor al consultar viajes:", data)
+    } catch (error) {
+      console.error("❌ Error al conectar con la API:", error)
     }
-  } catch (error) {
-    console.error("❌ Error al conectar con la API:", error)
   }
-}
 
   useEffect(() => {
     cleanupPolling()
@@ -652,8 +769,8 @@ const response = await fetch(url, {
         if (isPollingActiveRef.current) {
           fetchPendingRides()
         }
-      }, 3000)
-      console.log("🔄 Polling iniciado")
+      }, 2000) // Reducido a 2 segundos para respuesta más rápida
+      console.log("🔄 Polling iniciado con intervalo de 2 segundos")
     }
 
     return () => {
@@ -757,163 +874,163 @@ const response = await fetch(url, {
   }
 
   const renderRideRequest = ({ item }: { item: RideRequest }) => {
-  // ✅ VALIDACIÓN: Asegurar que los precios existen
-  const proposedPrice = item.proposedPrice || 0
-  const counterOfferPrice = item.counterOfferPrice
+    // ✅ VALIDACIÓN: Asegurar que los precios existen
+    const proposedPrice = item.proposedPrice || 0
+    const counterOfferPrice = item.counterOfferPrice
 
-  return (
-    <View style={styles.rideRequestCard}>
-      {/* Header compacto con indicador de estado */}
-      <View style={styles.requestHeader}>
-        <View style={styles.passengerInfo}>
-          <View style={styles.passengerIcon}>
-            <FontAwesome name="user" size={14} color="#666" />
-          </View>
-          <Text style={styles.passengerName}>
-            {item.passengerName || "Pasajera"}
-          </Text>
-          {/* Indicador de negociación */}
-          {item.status === "negotiation" && (
-            <View style={styles.negotiationBadge}>
-              <Text style={styles.negotiationBadgeText}>En negociación</Text>
+    return (
+      <View style={styles.rideRequestCard}>
+        {/* Header compacto con indicador de estado */}
+        <View style={styles.requestHeader}>
+          <View style={styles.passengerInfo}>
+            <View style={styles.passengerIcon}>
+              <FontAwesome name="user" size={14} color="#666" />
             </View>
-          )}
-        </View>
-        <View style={styles.contactActions}>
-          <TouchableOpacity 
-            style={styles.whatsappButton} 
-            onPress={() => openWhatsApp(item.passenger.whatsapp)}
-          >
-            <FontAwesome name="whatsapp" size={16} color="#25D366" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.callButton} 
-            onPress={() => callPassenger(item.passenger.phone)}
-          >
-            <FontAwesome name="phone" size={16} color="#FF69B4" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Ubicaciones en layout horizontal */}
-      <View style={styles.locationsContainer}>
-        <View style={styles.locationsRow}>
-          <View style={styles.locationCompact}>
-            <View style={styles.locationDot} />
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationLabel}>ORIGEN</Text>
-              <Text style={styles.locationAddress} numberOfLines={1}>
-                {item.pickupAddress || "Dirección no disponible"}
-              </Text>
-              <Text style={styles.locationNeighborhood}>
-                {item.pickupNeighborhood} • {item.pickupZone}
-              </Text>
-            </View>
+            <Text style={styles.passengerName}>
+              {item.passengerName || "Pasajera"}
+            </Text>
+            {/* Indicador de negociación */}
+            {item.status === "negotiation" && (
+              <View style={styles.negotiationBadge}>
+                <Text style={styles.negotiationBadgeText}>En negociación</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.locationArrow}>
-            <FontAwesome name="arrow-right" size={12} color="#ccc" />
-          </View>
-          <View style={styles.locationCompact}>
-            <View style={[styles.locationDot, styles.destinationDot]} />
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationLabel}>DESTINO</Text>
-              <Text style={styles.locationAddress} numberOfLines={1}>
-                {item.destinationAddress || "Destino no disponible"}
-              </Text>
-              <Text style={styles.locationNeighborhood}>
-                {item.destinationNeighborhood} • {item.destinationZone}
-              </Text>
-            </View>
+          <View style={styles.contactActions}>
+            <TouchableOpacity 
+              style={styles.whatsappButton} 
+              onPress={() => openWhatsApp(item.passenger.whatsapp)}
+            >
+              <FontAwesome name="whatsapp" size={16} color="#25D366" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.callButton} 
+              onPress={() => callPassenger(item.passenger.phone)}
+            >
+              <FontAwesome name="phone" size={16} color="#FF69B4" />
+            </TouchableOpacity>
           </View>
         </View>
-      </View>
 
-      {/* Info del viaje con precios */}
-      <View style={styles.priceMainContainer}>
-        <View style={styles.priceLeftSection}>
-          {item.status === "negotiation" && counterOfferPrice ? (
-            <View style={styles.priceNegotiationContainer}>
-              <Text style={styles.originalPrice}>
+        {/* Ubicaciones en layout horizontal */}
+        <View style={styles.locationsContainer}>
+          <View style={styles.locationsRow}>
+            <View style={styles.locationCompact}>
+              <View style={styles.locationDot} />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationLabel}>ORIGEN</Text>
+                <Text style={styles.locationAddress} numberOfLines={1}>
+                  {item.pickupAddress || "Dirección no disponible"}
+                </Text>
+                <Text style={styles.locationNeighborhood}>
+                  {item.pickupNeighborhood} • {item.pickupZone}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.locationArrow}>
+              <FontAwesome name="arrow-right" size={12} color="#ccc" />
+            </View>
+            <View style={styles.locationCompact}>
+              <View style={[styles.locationDot, styles.destinationDot]} />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationLabel}>DESTINO</Text>
+                <Text style={styles.locationAddress} numberOfLines={1}>
+                  {item.destinationAddress || "Destino no disponible"}
+                </Text>
+                <Text style={styles.locationNeighborhood}>
+                  {item.destinationNeighborhood} • {item.destinationZone}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Info del viaje con precios */}
+        <View style={styles.priceMainContainer}>
+          <View style={styles.priceLeftSection}>
+            {item.status === "negotiation" && counterOfferPrice ? (
+              <View style={styles.priceNegotiationContainer}>
+                <Text style={styles.originalPrice}>
+                  ${proposedPrice.toLocaleString()}
+                </Text>
+                <Text style={styles.counterOfferPrice}>
+                  → ${counterOfferPrice.toLocaleString()}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.priceAmount}>
                 ${proposedPrice.toLocaleString()}
               </Text>
-              <Text style={styles.counterOfferPrice}>
-                → ${counterOfferPrice.toLocaleString()}
-              </Text>
+            )}
+          </View>
+          
+          {/* Botón de negociación o campos de edición */}
+          {item.status === "negotiation" ? (
+            <View style={styles.waitingResponse}>
+              <FontAwesome name="clock-o" size={12} color="#FF9500" />
+              <Text style={styles.waitingResponseText}>Esperando respuesta</Text>
+            </View>
+          ) : editingPrice === item.id ? (
+            <View style={styles.priceEditContainer}>
+              <TextInput
+                style={styles.priceInput}
+                value={counterOfferPrice !== undefined ? counterOfferPrice.toString() : ""}
+                onChangeText={setCounterOfferPrice}
+                keyboardType="numeric"
+                placeholder="Precio"
+                autoFocus
+              />
+              <TouchableOpacity 
+                style={styles.submitPriceButton} 
+                onPress={() => submitCounterOffer(item.id)}
+              >
+                <FontAwesome name="check" size={12} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.cancelPriceButton} 
+                onPress={() => setEditingPrice(null)}
+              >
+                <FontAwesome name="times" size={12} color="#666" />
+              </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.priceAmount}>
-              ${proposedPrice.toLocaleString()}
-            </Text>
+            <TouchableOpacity 
+              style={styles.negotiateButton} 
+              onPress={() => handlePriceEdit(item.id, proposedPrice)}
+            >
+              <FontAwesome name="edit" size={12} color="#FF69B4" />
+              <Text style={styles.negotiateButtonText}>Negociar</Text>
+            </TouchableOpacity>
           )}
         </View>
-        
-        {/* Botón de negociación o campos de edición */}
-        {item.status === "negotiation" ? (
-          <View style={styles.waitingResponse}>
-            <FontAwesome name="clock-o" size={12} color="#FF9500" />
-            <Text style={styles.waitingResponseText}>Esperando respuesta</Text>
-          </View>
-        ) : editingPrice === item.id ? (
-          <View style={styles.priceEditContainer}>
-            <TextInput
-              style={styles.priceInput}
-              value={counterOfferPrice !== undefined ? counterOfferPrice.toString() : ""}
-              onChangeText={setCounterOfferPrice}
-              keyboardType="numeric"
-              placeholder="Precio"
-              autoFocus
-            />
-            <TouchableOpacity 
-              style={styles.submitPriceButton} 
-              onPress={() => submitCounterOffer(item.id)}
-            >
-              <FontAwesome name="check" size={12} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.cancelPriceButton} 
-              onPress={() => setEditingPrice(null)}
-            >
-              <FontAwesome name="times" size={12} color="#666" />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity 
-            style={styles.negotiateButton} 
-            onPress={() => handlePriceEdit(item.id, proposedPrice)}
-          >
-            <FontAwesome name="edit" size={12} color="#FF69B4" />
-            <Text style={styles.negotiateButtonText}>Negociar</Text>
-          </TouchableOpacity>
-        )}
-      </View>
 
-      {/* Botones de acción */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={styles.rejectButton} 
-          onPress={() => rejectRide(item.id)}
-        >
-          <Text style={styles.rejectButtonText}>Rechazar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.acceptButton, 
-            item.status === "negotiation" && styles.acceptButtonDisabled
-          ]}
-          onPress={() => acceptRide(item.id)}
-          disabled={item.status === "negotiation"}
-        >
-          <Text style={[
-            styles.acceptButtonText, 
-            item.status === "negotiation" && styles.acceptButtonTextDisabled
-          ]}>
-            {item.status === "negotiation" ? "En negociación" : "Aceptar"}
-          </Text>
-        </TouchableOpacity>
+        {/* Botones de acción */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.rejectButton} 
+            onPress={() => rejectRide(item.id)}
+          >
+            <Text style={styles.rejectButtonText}>Rechazar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.acceptButton, 
+              item.status === "negotiation" && styles.acceptButtonDisabled
+            ]}
+            onPress={() => acceptRide(item.id)}
+            disabled={item.status === "negotiation"}
+          >
+            <Text style={[
+              styles.acceptButtonText, 
+              item.status === "negotiation" && styles.acceptButtonTextDisabled
+            ]}>
+              {item.status === "negotiation" ? "En negociación" : "Aceptar"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  )
-}
+    )
+  }
 
   return (
     <LinearGradient colors={["#FFE4F3", "#FFC1E3"]} style={styles.container}>
@@ -1004,4 +1121,3 @@ const response = await fetch(url, {
 }
 
 export default HomeDriver
-
