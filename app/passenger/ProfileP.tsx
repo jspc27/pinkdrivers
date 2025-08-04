@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import styles from "../styles/ProfilePstyles";
 
 const ProfileP = () => {
@@ -68,11 +68,9 @@ const ProfileP = () => {
 
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            <Image 
-              source={{ uri: "https://i.pravatar.cc/150?img=47" }} 
-              style={styles.avatar} 
-            />
-          </View>
+  <Ionicons name="person-circle-outline" size={100} color="#FF1493" />
+</View>
+
           <Text style={styles.userName}>{user.name}</Text>
         </View>
       </LinearGradient>

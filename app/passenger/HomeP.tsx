@@ -1,5 +1,5 @@
 "use client"
-import { FontAwesome, FontAwesome5 } from "@expo/vector-icons"
+import { FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Picker } from "@react-native-picker/picker"
 import { LinearGradient } from "expo-linear-gradient"
@@ -539,7 +539,7 @@ const HomeP = () => {
     } finally {
       setIsLoadingAcceptedTrip(false)
     }
-  }
+  }      
 
   // 🔥 useEffect para obtener ubicación INICIAL y configurar watcher
   useEffect(() => {
@@ -1275,14 +1275,14 @@ const HomeP = () => {
         </View>
 
         <View style={styles.avatarMenuContainer}>
-          <TouchableOpacity
-            onPress={() => navigateTo("/passenger/ProfileP")}
-            style={styles.avatarButtonContainer}
-            activeOpacity={0.8}
-          >
-            <Image source={{ uri: "https://i.pravatar.cc/150?img=47" }} style={styles.avatarSmall} />
-          </TouchableOpacity>
-        </View>
+  <TouchableOpacity
+    onPress={() => navigateTo("/passenger/ProfileP")}
+    style={styles.avatarButtonContainer}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="person-circle-outline" size={45} color="#B33F8D" />
+  </TouchableOpacity>
+</View>
 
         <View style={[styles.footer, { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, flex: 1 }]}>
           <ScrollView showsVerticalScrollIndicator={false}>{renderAcceptedTripDetail()}</ScrollView>
@@ -1301,14 +1301,14 @@ const HomeP = () => {
       {menuVisible && <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={closeMenu} />}
 
       <View style={styles.avatarMenuContainer}>
-        <TouchableOpacity
-          onPress={() => navigateTo("/passenger/ProfileP")}
-          style={styles.avatarButtonContainer}
-          activeOpacity={0.8}
-        >
-          <Image source={{ uri: "https://i.pravatar.cc/150?img=47" }} style={styles.avatarSmall} />
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity
+    onPress={() => navigateTo("/passenger/ProfileP")}
+    style={styles.avatarButtonContainer}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="person-circle-outline" size={45} color="#B33F8D" />
+  </TouchableOpacity>
+</View>
 
       <View style={[styles.footer, { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10 }]}>
         <TouchableOpacity onPress={openModalFromCurrentLocation}>
