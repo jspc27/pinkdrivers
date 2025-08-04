@@ -901,13 +901,13 @@ const HomeDriver = () => {
               style={styles.whatsappButton} 
               onPress={() => openWhatsApp(item.passenger.whatsapp)}
             >
-              <FontAwesome name="whatsapp" size={16} color="#25D366" />
+              <FontAwesome name="whatsapp" size={18} color="#25D366" />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.callButton} 
               onPress={() => callPassenger(item.passenger.phone)}
             >
-              <FontAwesome name="phone" size={16} color="#FF69B4" />
+              <FontAwesome name="phone" size={18} color="#FF69B4" />
             </TouchableOpacity>
           </View>
         </View>
@@ -974,7 +974,7 @@ const HomeDriver = () => {
             <View style={styles.priceEditContainer}>
               <TextInput
                 style={styles.priceInput}
-                value={counterOfferPrice !== undefined ? counterOfferPrice.toString() : ""}
+                value={counterOfferPrice}
                 onChangeText={setCounterOfferPrice}
                 keyboardType="numeric"
                 placeholder="Precio"
@@ -1040,7 +1040,7 @@ const HomeDriver = () => {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigateTo("./ProfileD")}>
           <View style={styles.profileIconSmall}>
-            <FontAwesome name="user" size={18} color="#FF69B4" />
+            <FontAwesome name="user" size={19} color="#FF69B4" />
           </View>
         </TouchableOpacity>
         <View style={styles.headerInfo}>
