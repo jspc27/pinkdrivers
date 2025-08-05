@@ -1,5 +1,5 @@
 "use client"
-import { FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-icons"
+import { FontAwesome, FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Picker } from "@react-native-picker/picker"
 import { LinearGradient } from "expo-linear-gradient"
@@ -389,7 +389,10 @@ const HomeP = () => {
           
           Alert.alert(
             "¡Viaje finalizado!",
-            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: ${data.viaje_finalizado.valorPersonalizado.toLocaleString()} \n\n¡Gracias por usar Pink Drivers!`,
+            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: $${Number(data.viaje_finalizado.valorPersonalizado).toLocaleString("es-CO", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})} \n\n¡Gracias por usar Pink Drivers!`,
             [
               {
                 text: "OK",
@@ -760,7 +763,11 @@ const HomeP = () => {
       if (response.ok && data.success) {
         Alert.alert(
           "¡Contraoferta aceptada!",
-          `Has aceptado la propuesta de ${contraofertaData.conductora_nombre} por $${Number(contraofertaData.valorPersonalizado).toLocaleString()}`,
+          `Has aceptado la propuesta de ${contraofertaData.conductora_nombre} por $${Number(contraofertaData.valorPersonalizado).toLocaleString("es-CO", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})}`
+,
           [
             {
               text: "OK",
@@ -1122,82 +1129,131 @@ const HomeP = () => {
 
   // Render accepted trip detail view - DiDi style
   const renderAcceptedTripDetail = () => {
-    if (!acceptedTrip) return null
+  if (!acceptedTrip) return null
 
-    const firstName = acceptedTrip.conductora_nombre.split(" ")[0]
+  const firstName = acceptedTrip.conductora_nombre.split(" ")[0]
 
-    return (
-      <View style={styles.acceptedTripContainer}>
-        <View style={styles.acceptedTripHeader}>
-          <Text style={styles.acceptedTripTitle}>¡Tu viaje fue aceptado!</Text>
-          <View style={styles.tripStatusBadge}>
-            <Text style={styles.tripStatusText}>Confirmado</Text>
-          </View>
-        </View>
-
-        <View style={styles.driverDetailCard}>
-          <FontAwesome5 name="user-circle" size={80} color="#FF69B4" />
-          <View style={styles.driverDetailInfo}>
-            <Text style={styles.driverNameLarge}>{firstName}</Text>
-            <Text style={styles.vehicleInfo}>{acceptedTrip.selectedVehicle}</Text>
-            {acceptedTrip.vehiculo_placa && (
-              <Text style={styles.vehicleDetails}>Placas: {acceptedTrip.vehiculo_placa}</Text>
-            )}
-            {acceptedTrip.vehiculo_color && (
-              <Text style={styles.vehicleDetails}>Color: {acceptedTrip.vehiculo_color}</Text>
-            )}
-            <TouchableOpacity
-              style={styles.callDriverButton}
-              onPress={() => llamarConductora(acceptedTrip.conductora_telefono)}
-            >
-              <FontAwesome name="phone" size={16} color="#fff" />
-              <Text style={styles.callDriverButtonText}>Llamar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.tripRouteDetailCard}>
-          <View style={styles.tripRoutePoint}>
-            <View style={styles.tripRoutePointDot} />
-            <View style={styles.tripRoutePointInfo}>
-              <Text style={styles.tripRoutePointLabel}>ORIGEN</Text>
-              <Text style={styles.tripRoutePointAddress}>{acceptedTrip.ubicacionActual}</Text>
-              <Text style={styles.tripRoutePointNeighborhood}>
-                {acceptedTrip.barrioActual} • {acceptedTrip.zonaActual}
-              </Text>
-              <Text style={styles.tripRouteReference}>Ref: {acceptedTrip.puntoReferencia}</Text>
-            </View>
-          </View>
-
-          <View style={styles.tripRouteLine} />
-
-          <View style={styles.tripRoutePoint}>
-            <View style={[styles.tripRoutePointDot, styles.tripDestinationDot]} />
-            <View style={styles.tripRoutePointInfo}>
-              <Text style={styles.tripRoutePointLabel}>DESTINO</Text>
-              <Text style={styles.tripRoutePointAddress}>{acceptedTrip.destinoDireccion}</Text>
-              <Text style={styles.tripRoutePointNeighborhood}>
-                {acceptedTrip.destinoBarrio} • {acceptedTrip.destinoZona}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.tripPriceDetailCard}>
-          <Text style={styles.tripPriceDetailLabel}>Precio acordado</Text>
-          <Text style={styles.tripPriceDetailAmount}>${acceptedTrip.valorPersonalizado.toLocaleString()}</Text>
-          <Text style={styles.tripVehicleType}>Vehículo: {acceptedTrip.selectedVehicle}</Text>
-        </View>
-
-        <View style={styles.tripActionButtons}>
-          <TouchableOpacity style={styles.cancelTripButtonFull} onPress={cancelarViajeAceptado}>
-            <FontAwesome name="times" size={16} color="#FF5722" />
-            <Text style={styles.cancelTripButtonText}>Cancelar viaje</Text>
-          </TouchableOpacity>
+  return (
+    <View style={styles.acceptedTripContainer}>
+      {/* Header mejorado */}
+      <View style={styles.acceptedTripHeader}>
+        <Text style={styles.acceptedTripTitle}>¡Tu viaje fue aceptado! 🎉</Text>
+        <View style={styles.tripStatusBadge}>
+          <Text style={styles.tripStatusText}>✓ CONFIRMADO</Text>
         </View>
       </View>
-    )
-  }
+
+      {/* Información de la conductora mejorada */}
+      <View style={styles.driverDetailCard}>
+        <View style={styles.driverHeaderInfo}>
+          <View style={styles.driverAvatarContainer}>
+            <View style={styles.driverAvatar}>
+              <FontAwesome5 name="user" size={35} color="#fff" />
+            </View>
+          </View>
+          
+          <View style={styles.driverMainInfo}>
+            <Text style={styles.driverNameLarge}>{firstName}</Text>
+          </View>
+        </View>
+
+        {/* Información del vehículo mejorada */}
+        <View style={styles.vehicleInfoSection}>
+          <View style={styles.vehicleInfoHeader}>
+            <FontAwesome5 name="car" size={18} color="#FF69B4" />
+            <Text style={styles.vehicleInfoTitle}>Información del vehículo</Text>
+          </View>
+          
+          <View style={styles.vehicleDetailsRow}>
+            <View style={styles.vehicleDetailItem}>
+              <Text style={styles.vehicleDetailLabel}>Tipo</Text>
+              <Text style={styles.vehicleDetailValue}>{acceptedTrip.selectedVehicle}</Text>
+            </View>
+            
+            {acceptedTrip.vehiculo_placa && (
+              <View style={styles.vehicleDetailItem}>
+                <Text style={styles.vehicleDetailLabel}>Placas</Text>
+                <Text style={styles.vehicleDetailValue}>{acceptedTrip.vehiculo_placa}</Text>
+              </View>
+            )}
+          </View>
+          
+          {acceptedTrip.vehiculo_color && (
+            <View style={styles.vehicleDetailsRow}>
+              <View style={styles.vehicleDetailItem}>
+                <Text style={styles.vehicleDetailLabel}>Color</Text>
+                <Text style={styles.vehicleDetailValue}>{acceptedTrip.vehiculo_color}</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Botón de llamar mejorado */}
+        <TouchableOpacity
+          style={styles.callDriverButton}
+          onPress={() => llamarConductora(acceptedTrip.conductora_telefono)}
+        >
+          <FontAwesome name="phone" size={18} color="#fff" />
+          <Text style={styles.callDriverButtonText}>Llamar</Text>
+        </TouchableOpacity>
+
+        
+      </View>
+
+      {/* Información de ruta mejorada */}
+      <View style={styles.tripRouteDetailCard}>
+
+
+        <View style={styles.tripRoutePoint}>
+          <View style={styles.tripRoutePointDot} />
+          <View style={styles.tripRoutePointInfo}>
+            <Text style={styles.tripRoutePointLabel}>ORIGEN</Text>
+            <Text style={styles.tripRoutePointAddress}>{acceptedTrip.ubicacionActual}</Text>
+            <Text style={styles.tripRoutePointNeighborhood}>
+              {acceptedTrip.barrioActual} • {acceptedTrip.zonaActual}
+            </Text>
+            <Text style={styles.tripRouteReference}>Ref: {acceptedTrip.puntoReferencia}</Text>
+          </View>
+        </View>
+
+        <View style={styles.tripRouteLine} />
+
+        <View style={styles.tripRoutePoint}>
+          <View style={[styles.tripRoutePointDot, styles.tripDestinationDot]} />
+          <View style={styles.tripRoutePointInfo}>
+            <Text style={styles.tripRoutePointLabel}>DESTINO</Text>
+            <Text style={styles.tripRoutePointAddress}>{acceptedTrip.destinoDireccion}</Text>
+            <Text style={styles.tripRoutePointNeighborhood}>
+              {acceptedTrip.destinoBarrio} • {acceptedTrip.destinoZona}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Tarjeta de precio mejorada */}
+      <View style={[styles.tripPriceDetailCard]}>
+        <Text style={styles.tripPriceDetailAmount}>
+          ${acceptedTrip.valorPersonalizado.toLocaleString("es-CO", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})}
+
+        </Text>
+      </View>
+
+      {/* Botón de cancelar mejorado */}
+      <View style={styles.tripActionButtons}>
+        <TouchableOpacity 
+          style={styles.cancelTripButtonFull} 
+          onPress={cancelarViajeAceptado}
+        >
+          <FontAwesome name="times-circle" size={18} color="#FF5722" />
+          <Text style={styles.cancelTripButtonText}>Cancelar viaje</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
 
   // Función para renderizar el mapa con imagen personalizada
   const renderMap = () => {
@@ -1363,7 +1419,11 @@ const HomeP = () => {
                     <Text style={styles.contraofertaPlate}>Color: {contraofertaData.vehiculo_color}</Text>
                     <Text style={styles.contraofertaMessage}>Te propuso un precio de:</Text>
                     <Text style={styles.contraofertaPrice}>
-                      ${Number(contraofertaData.valorPersonalizado).toLocaleString()} 
+                      ${Number(contraofertaData.valorPersonalizado).toLocaleString("es-CO", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})}
+ 
                     </Text>
                     <View style={styles.contraofertaButtons}>
                       <TouchableOpacity
@@ -1573,23 +1633,27 @@ const HomeP = () => {
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={[
-                            styles.vehicleOption,
-                            selectedVehicle === "motocarro" && styles.selectedVehicleOption,
-                          ]}
-                          onPress={() => selectVehicle("motocarro")}
-                        >
-                          <FontAwesome
-                            name="truck"
-                            size={24}
-                            color={selectedVehicle === "motocarro" ? "#fff" : "#333"}
-                          />
-                          <Text
-                            style={[styles.vehicleText, selectedVehicle === "motocarro" && styles.selectedVehicleText]}
-                          >
-                            Motocarro
-                          </Text>
-                        </TouchableOpacity>
+  style={[
+    styles.vehicleOption,
+    selectedVehicle === "motocarro" && styles.selectedVehicleOption,
+  ]}
+  onPress={() => selectVehicle("motocarro")}
+>
+  <MaterialCommunityIcons
+    name="rickshaw"
+    size={35}
+    color={selectedVehicle === "motocarro" ? "#fff" : "#333"}
+  />
+  <Text
+    style={[
+      styles.vehicleText,
+      selectedVehicle === "motocarro" && styles.selectedVehicleText,
+    ]}
+  >
+    Motocarro
+  </Text>
+</TouchableOpacity>
+
                       </View>
                     </View>
 
