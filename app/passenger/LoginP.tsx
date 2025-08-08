@@ -28,6 +28,9 @@ const LoginP = () => {
   const [showAlert, setShowAlert] = useState(false);
 
   const router = useRouter();
+  const navigateTo = (screen: any) => {
+  router.push(screen)
+}
 
   const showStyledAlert = (message: string) => {
     setAlertMessage(message);
@@ -211,6 +214,13 @@ try {
               <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
             </TouchableOpacity>
 
+             <TouchableOpacity
+                            onPress={() => navigateTo("/recuperar/CambiarContrasena")}>
+              <Text style={{ color: "#ffff", marginTop: 10, textAlign: "center" }}>
+                ¿Olvidaste tu contraseña?
+              </Text>
+            </TouchableOpacity>
+
             <View style={styles.signupContainer}>
               <Text style={styles.signupText}>¿No tienes cuenta? </Text>
               <TouchableOpacity
@@ -232,3 +242,4 @@ try {
 };
 
 export default LoginP;
+

@@ -1,6 +1,7 @@
 "use client"
 
 import { FontAwesome } from "@expo/vector-icons"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LinearGradient } from "expo-linear-gradient"
 import * as Location from "expo-location"
 import { useRouter } from "expo-router"
@@ -20,7 +21,7 @@ import {
 } from "react-native"
 import StyledAlert from "../components/StyledAlert"
 import styles from "../styles/LoginDstyles"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+
 
 const LoginD = () => {
   const [telefono, setTelefono] = useState("")
@@ -30,6 +31,10 @@ const LoginD = () => {
   const [alertMessage, setAlertMessage] = useState("")
   const [showAlert, setShowAlert] = useState(false)
   const router = useRouter()
+
+  const navigateTo = (screen: any) => {
+  router.push(screen)
+}
 
   const showStyledAlert = (message: string) => {
     setAlertMessage(message)
@@ -206,6 +211,13 @@ const LoginD = () => {
             <TouchableOpacity onPress={handleLogin} style={styles.loginButton}>
               <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+                onPress={() => navigateTo("/recuperar/CambiarContrasena")}>
+  <Text style={{ color: "#FF69B4", marginTop: 10, textAlign: "center" }}>
+    ¿Olvidaste tu contraseña?
+  </Text>
+</TouchableOpacity>
+
 
             <View style={styles.signupContainer}>
               <Text style={styles.signupText}>¿No tienes cuenta? </Text>
@@ -227,3 +239,5 @@ const LoginD = () => {
 }
 
 export default LoginD
+
+
