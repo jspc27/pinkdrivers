@@ -1,13 +1,13 @@
 "use client"
 
+import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LinearGradient } from "expo-linear-gradient"
 import { router, useFocusEffect } from "expo-router"
-import { Camera, Check, ChevronLeft, Mail, MapPin, Phone, User } from "lucide-react-native"
+import { Check, ChevronLeft, Mail, MapPin, Phone, User } from "lucide-react-native"
 import { useCallback, useState } from "react"
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,7 +15,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native"
 import styles from "../styles/EditDstyles"
 
@@ -184,12 +184,12 @@ const EditProfileD = () => {
         {/* Sección de foto de perfil */}
         <View style={styles.photoSection}>
           <View style={styles.avatarContainer}>
-            <Image source={{ uri: "https://i.pravatar.cc/150?img=47" }} style={styles.avatar} />
-            <TouchableOpacity style={styles.cameraButton}>
-              <Camera size={24} color="white" />
-            </TouchableOpacity>
+            <Ionicons
+              name="person-circle-outline"
+              size={100}
+              color="#FF69B4"
+            />
           </View>
-          <Text style={styles.changePhotoText}>Cambiar foto de perfil</Text>
         </View>
 
         {/* Formulario de edición */}

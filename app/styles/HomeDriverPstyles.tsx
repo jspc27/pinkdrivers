@@ -212,21 +212,27 @@ const styles = StyleSheet.create({
     width: 90,
     textAlign: "center",
     backgroundColor: "#fff",
+    color: "#000",
   },
   submitPriceButton: {
     backgroundColor: "#FF69B4",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 20, // antes 10
+    paddingVertical: 12,   // antes 6
+    borderRadius: 8,       // un poco más redondeado
     alignItems: "center",
     justifyContent: "center",
   },
+  
   cancelPriceButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#ddd", // o "#ccc" para un gris más suave
+    borderRadius: 6,     // opcional, para esquinas redondeadas
   },
+  
   // BOTONES DE ACCIÓN MÁS GRANDES
   actionButtons: {
     flexDirection: "row",
