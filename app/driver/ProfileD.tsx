@@ -48,6 +48,9 @@ const ProfileP = () => {
       Alert.alert("Error", "Fallo al conectar con el servidor.");
     }
   };
+  const navigateTo = (screen: any) => {
+  router.push(screen)
+}
 
   useEffect(() => {
     fetchUserProfile();
@@ -114,9 +117,10 @@ const ProfileP = () => {
             <Text style={styles.optionText}>Ayuda y soporte</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.optionItem}>
-            <Text style={styles.optionText}>Cambiar contraseña</Text>
-          </TouchableOpacity>
+          <TouchableOpacity
+                onPress={() => navigateTo("/recuperar/CambiarContrasena")}>
+  <Text style={styles.optionText}>Cambiar contraseña</Text>
+</TouchableOpacity>
 
           <TouchableOpacity
   style={[styles.optionItem, styles.logoutButton]}

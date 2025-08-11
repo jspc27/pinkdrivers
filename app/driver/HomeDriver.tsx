@@ -530,234 +530,324 @@ const HomeDriver = () => {
     }
   }
 
-  // ✅ FUNCIÓN MEJORADA PARA MANEJAR CANCELACIONES EN TIEMPO REAL
-  const fetchPendingRides = async () => {
-    if (acceptedRide) return
+  
 
-    const now = Date.now()
-    if (now - lastFetchTimestamp.current < 2000) { // Reducido a 2 segundos para mayor velocidad
-      return
-    }
-    lastFetchTimestamp.current = now
+ // Función para verificar si alguna contraoferta ha sido aceptada
+const checkContraofertaAceptada = async () => {
+  try {
+    const token = await AsyncStorage.getItem("token")
+    if (!token) return
 
-    try {
-      const token = await AsyncStorage.getItem("token")
-      if (!token) {
-        console.warn("⚠️ Token no disponible para viajes pendientes.")
-        return
-      }
-
-      // 🔥 PASO 1: Verificar estado de viajes actuales ANTES de obtener nuevos
-      const currentRideIds = rideRequests.map(ride => ride.id)
-      
-      if (currentRideIds.length > 0) {
-        console.log("🔍 Verificando estado de viajes actuales:", currentRideIds)
-        
-        // Verificar cada viaje individualmente para detectar cancelaciones
-        for (const rideId of currentRideIds) {
-          try {
-            const statusResponse = await fetch(
-              `https://www.pinkdrivers.com/api-rest/index.php?action=verificar_estado_viaje&viaje_id=${rideId}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            )
-            
-            if (!statusResponse.ok) {
-              console.log(`🚫 Viaje ${rideId} no encontrado - probablemente cancelado`)
-              setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
-              continue
-            }
-
-            const statusData = await statusResponse.json()
-            console.log(`📊 Estado del viaje ${rideId}:`, statusData)
-            
-            // Múltiples condiciones para detectar cancelación
-            if (
-              !statusData.success ||
-              statusData.estado === "cancelado" || 
-              statusData.cancelled === true ||
-              statusData.status === "cancelled" ||
-              statusData.message?.includes("cancelado") ||
-              statusData.message?.includes("No encontrado")
-            ) {
-              console.log(`🚫 Viaje ${rideId} cancelado - eliminando inmediatamente`)
-              setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
-              
-              const newRejectedRides = new Set(rejectedRides)
-              newRejectedRides.add(rideId)
-              setRejectedRides(newRejectedRides)
-              await saveRejectedRides(newRejectedRides)
-            }
-          } catch (statusError) {
-            console.log(`🚫 Error consultando viaje ${rideId} - asumiendo cancelado:`, statusError)
-            // Si hay error al consultar, asumir que está cancelado
-            setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
-          }
-        }
-      }
-
-      // 🔥 PASO 2: Obtener lista actualizada del servidor
-      const currentIdsForServer = rideRequests.map((r) => r.id).join(",")
-      const url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&checkStates=true&currentIds=${currentIdsForServer}&timestamp=${now}`
-
-      console.log("📡 Consultando servidor:", url)
-
-      const response = await fetch(url, {
+    const response = await fetch(
+      "https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", 
+      {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
-
-      const data = await response.json()
-      console.log("📥 Respuesta del servidor:", data)
-
-      if (response.ok) {
-        let hasChanges = false
-
-        // 🚫 CANCELACIONES del servidor
-        const cancelledIds = data.cancelled_ids || []
-        
-        if (cancelledIds.length > 0) {
-          console.log("🚫 Cancelaciones reportadas por servidor:", cancelledIds)
-          
-          const cancelledIdsString = cancelledIds.map((id: any) => id.toString())
-          
-          setRideRequests((prev) => {
-            const filteredRides = prev.filter((ride) => !cancelledIdsString.includes(ride.id))
-            if (filteredRides.length !== prev.length) {
-              console.log(`🗑️ Eliminando ${prev.length - filteredRides.length} viajes cancelados por servidor`)
-              hasChanges = true
-            }
-            return filteredRides
-          })
-
-          const newRejectedRides = new Set(rejectedRides)
-          cancelledIdsString.forEach((id: string) => {
-            newRejectedRides.add(id)
-          })
-          setRejectedRides(newRejectedRides)
-          await saveRejectedRides(newRejectedRides)
-        }
-
-        // ❌ Contraofertas rechazadas
-        const rejectedCounterOffers = data.rejected_counteroffers || []
-        
-        if (rejectedCounterOffers.length > 0) {
-          console.log("❌ Contraofertas rechazadas:", rejectedCounterOffers)
-          
-          const rejectedCounterOffersString = rejectedCounterOffers.map((id: any) => id.toString())
-          
-          setRideRequests((prev) => {
-            const filteredRides = prev.filter((ride) => !rejectedCounterOffersString.includes(ride.id))
-            if (filteredRides.length !== prev.length) {
-              console.log(`🗑️ Eliminando ${prev.length - filteredRides.length} contraofertas rechazadas`)
-              hasChanges = true
-            }
-            return filteredRides
-          })
-
-          const newRejectedRides = new Set(rejectedRides)
-          rejectedCounterOffersString.forEach((id: string) => {
-            newRejectedRides.add(id)
-          })
-          setRejectedRides(newRejectedRides)
-          await saveRejectedRides(newRejectedRides)
-        }
-
-        // ✅ Procesar nuevos viajes o actualizaciones
-        if (data.viajes?.length) {
-          const formattedRides: RideRequest[] = data.viajes
-            .filter((viaje: any) => {
-              // Filtrar viajes cancelados o inválidos
-              return viaje.estado !== "cancelado" && 
-                     viaje.estado !== "finalizado" && 
-                     viaje.estado !== "aceptado"
-            })
-            .map((viaje: any) => ({
-              id: viaje.id.toString(),
-              passengerName: viaje.pasajero_nombre ? viaje.pasajero_nombre.split(" ")[0] : "Pasajera",
-              pickupAddress: viaje.ubicacionActual || "",
-              pickupNeighborhood: viaje.barrioActual || "",
-              pickupZone: viaje.zonaActual || "",
-              destinationAddress: viaje.destinoDireccion || "",
-              destinationNeighborhood: viaje.destinoBarrio || "",
-              destinationZone: viaje.destinoZona || "",
-              proposedPrice: Number(viaje.valorPersonalizado ?? 0),
-              counterOfferPrice: viaje.valor_contraoferta
-                ? Number(viaje.valor_contraoferta)
-                : undefined,
-              status: viaje.estado === "negociacion" ? "negotiation" : "pending",
-              passenger: {
-                phone: "N/A",
-                whatsapp: "N/A",
-              },
-            }))
-            .filter((ride: RideRequest) => {
-              const isRejected = rejectedRides.has(ride.id)
-              if (isRejected) {
-                console.log(`🚫 Viaje ${ride.id} filtrado (rechazado previamente)`)
-              }
-              return !isRejected
-            })
-
-          console.log("✅ Viajes válidos recibidos:", formattedRides.length)
-
-          // Actualizar lista con validación adicional
-          setRideRequests((prev) => {
-            // Si no hay viajes nuevos válidos, limpiar la lista
-            if (formattedRides.length === 0) {
-              if (prev.length > 0) {
-                console.log("🧹 No hay viajes válidos - limpiando lista")
-                hasChanges = true
-              }
-              return []
-            }
-
-            // Combinar viajes existentes con nuevos
-            const updatedList = formattedRides.reduce((accList, newRide) => {
-              const existingIndex = accList.findIndex((r) => r.id === newRide.id)
-              if (existingIndex !== -1) {
-                // Actualizar viaje existente
-                accList[existingIndex] = {
-                  ...accList[existingIndex],
-                  status: newRide.status,
-                  counterOfferPrice: newRide.counterOfferPrice,
-                }
-              } else {
-                // Agregar nuevo viaje
-                accList.push(newRide)
-                hasChanges = true
-              }
-              return accList
-            }, [...prev])
-
-            if (hasChanges) {
-              console.log(`🔄 Lista actualizada: ${prev.length} → ${updatedList.length}`)
-            }
-
-            return updatedList
-          })
-        } else {
-          // Si no hay viajes en la respuesta, limpiar la lista
-          setRideRequests((prev) => {
-            if (prev.length > 0) {
-              console.log("🧹 No hay viajes en respuesta - limpiando lista")
-              return []
-            }
-            return prev
-          })
-        }
-
-      } else {
-        console.warn("⚠️ Error de servidor al consultar viajes:", data)
       }
-    } catch (error) {
-      console.error("❌ Error al conectar con la API:", error)
+    )
+
+    const text = await response.text()
+    
+    if (!text || text.trim() === '') {
+      return
     }
+
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch (parseError) {
+      console.error("❌ Error al parsear respuesta:", parseError)
+      return
+    }
+
+    const viajeAceptado = data?.viaje_aceptado || data?.viaje
+    
+    if (viajeAceptado && !acceptedRide) {
+      console.log("🎉 ¡Viaje encontrado! (Puede ser contraoferta aceptada)")
+      
+      const acceptedRideData: RideRequest = {
+        id: viajeAceptado.id.toString(),
+        passengerName: viajeAceptado.pasajera_nombre ? viajeAceptado.pasajera_nombre.split(" ")[0] : "Pasajera",
+        pickupAddress: viajeAceptado.ubicacionActual || "",
+        pickupNeighborhood: viajeAceptado.barrioActual || "",
+        pickupZone: viajeAceptado.zonaActual || "",
+        destinationAddress: viajeAceptado.destinoDireccion || "",
+        destinationNeighborhood: viajeAceptado.destinoBarrio || "",
+        destinationZone: viajeAceptado.destinoZona || "",
+        proposedPrice: Number(viajeAceptado.valorPersonalizado || 0),
+        counterOfferPrice: viajeAceptado.valor_contraoferta ? Number(viajeAceptado.valor_contraoferta) : undefined,
+        status: "accepted",
+        passenger: {
+          phone: viajeAceptado.pasajera_telefono || "N/A",
+          whatsapp: viajeAceptado.pasajera_telefono || "N/A",
+        }
+      }
+
+      setAcceptedRide(acceptedRideData)
+      setRideStatus("accepted")
+      setRideRequests([])
+      cleanupPolling()
+
+      const isCounterOfferAccepted = viajeAceptado.valor_contraoferta && 
+        viajeAceptado.valorPersonalizado === viajeAceptado.valor_contraoferta
+
+      if (isCounterOfferAccepted) {
+        Alert.alert(
+          "¡Contraoferta aceptada!",
+          `La pasajera ${acceptedRideData.passengerName} ha aceptado tu propuesta de $${Number(viajeAceptado.valor_contraoferta).toLocaleString("es-CO")}`,
+          [{ text: "Ver viaje" }]
+        )
+      } else {
+        Alert.alert(
+          "¡Viaje aceptado!",
+          `Tienes un nuevo viaje con ${acceptedRideData.passengerName}`,
+          [{ text: "Ver viaje" }]
+        )
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error al verificar viaje aceptado:", error)
   }
+}
+
+// ✅ FUNCIÓN MEJORADA PARA MANEJAR CANCELACIONES EN TIEMPO REAL
+const fetchPendingRides = async () => {
+  if (acceptedRide) return
+
+  // 🎯 NUEVA VERIFICACIÓN: Comprobar si alguna contraoferta fue aceptada
+  await checkContraofertaAceptada()
+  
+  // Si después de verificar contraofertas ya tenemos un viaje aceptado, salir
+  if (acceptedRide) {
+    console.log("✅ Viaje aceptado encontrado, deteniendo fetch de pendientes")
+    return
+  }
+
+  const now = Date.now()
+  if (now - lastFetchTimestamp.current < 2000) { // Reducido a 2 segundos para mayor velocidad
+    return
+  }
+  lastFetchTimestamp.current = now
+
+  try {
+    const token = await AsyncStorage.getItem("token")
+    if (!token) {
+      console.warn("⚠️ Token no disponible para viajes pendientes.")
+      return
+    }
+
+    // 🔥 PASO 1: Verificar estado de viajes actuales ANTES de obtener nuevos
+    const currentRideIds = rideRequests.map(ride => ride.id)
+    
+    if (currentRideIds.length > 0) {
+      console.log("🔍 Verificando estado de viajes actuales:", currentRideIds)
+      
+      // Verificar cada viaje individualmente para detectar cancelaciones
+      for (const rideId of currentRideIds) {
+        try {
+          const statusResponse = await fetch(
+            `https://www.pinkdrivers.com/api-rest/index.php?action=verificar_estado_viaje&viaje_id=${rideId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          )
+          
+          if (!statusResponse.ok) {
+            console.log(`🚫 Viaje ${rideId} no encontrado - probablemente cancelado`)
+            setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
+            continue
+          }
+
+          const statusData = await statusResponse.json()
+          console.log(`📊 Estado del viaje ${rideId}:`, statusData)
+          
+          // Múltiples condiciones para detectar cancelación
+          if (
+            !statusData.success ||
+            statusData.estado === "cancelado" || 
+            statusData.cancelled === true ||
+            statusData.status === "cancelled" ||
+            statusData.message?.includes("cancelado") ||
+            statusData.message?.includes("No encontrado")
+          ) {
+            console.log(`🚫 Viaje ${rideId} cancelado - eliminando inmediatamente`)
+            setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
+            
+            const newRejectedRides = new Set(rejectedRides)
+            newRejectedRides.add(rideId)
+            setRejectedRides(newRejectedRides)
+            await saveRejectedRides(newRejectedRides)
+          }
+        } catch (statusError) {
+          console.log(`🚫 Error consultando viaje ${rideId} - asumiendo cancelado:`, statusError)
+          // Si hay error al consultar, asumir que está cancelado
+          setRideRequests(prev => prev.filter(ride => ride.id !== rideId))
+        }
+      }
+    }
+
+    // 🔥 PASO 2: Obtener lista actualizada del servidor
+    const currentIdsForServer = rideRequests.map((r) => r.id).join(",")
+    const url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&checkStates=true&currentIds=${currentIdsForServer}&timestamp=${now}`
+
+    console.log("📡 Consultando servidor:", url)
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+    console.log("📥 Respuesta del servidor:", data)
+
+    if (response.ok) {
+      let hasChanges = false
+
+      // 🚫 CANCELACIONES del servidor
+      const cancelledIds = data.cancelled_ids || []
+      
+      if (cancelledIds.length > 0) {
+        console.log("🚫 Cancelaciones reportadas por servidor:", cancelledIds)
+        
+        const cancelledIdsString = cancelledIds.map((id: any) => id.toString())
+        
+        setRideRequests((prev) => {
+          const filteredRides = prev.filter((ride) => !cancelledIdsString.includes(ride.id))
+          if (filteredRides.length !== prev.length) {
+            console.log(`🗑️ Eliminando ${prev.length - filteredRides.length} viajes cancelados por servidor`)
+            hasChanges = true
+          }
+          return filteredRides
+        })
+
+        const newRejectedRides = new Set(rejectedRides)
+        cancelledIdsString.forEach((id: string) => {
+          newRejectedRides.add(id)
+        })
+        setRejectedRides(newRejectedRides)
+        await saveRejectedRides(newRejectedRides)
+      }
+
+      // ❌ Contraofertas rechazadas
+      const rejectedCounterOffers = data.rejected_counteroffers || []
+      
+      if (rejectedCounterOffers.length > 0) {
+        console.log("❌ Contraofertas rechazadas:", rejectedCounterOffers)
+        
+        const rejectedCounterOffersString = rejectedCounterOffers.map((id: any) => id.toString())
+        
+        setRideRequests((prev) => {
+          const filteredRides = prev.filter((ride) => !rejectedCounterOffersString.includes(ride.id))
+          if (filteredRides.length !== prev.length) {
+            console.log(`🗑️ Eliminando ${prev.length - filteredRides.length} contraofertas rechazadas`)
+            hasChanges = true
+          }
+          return filteredRides
+        })
+
+        const newRejectedRides = new Set(rejectedRides)
+        rejectedCounterOffersString.forEach((id: string) => {
+          newRejectedRides.add(id)
+        })
+        setRejectedRides(newRejectedRides)
+        await saveRejectedRides(newRejectedRides)
+      }
+
+      // ✅ Procesar nuevos viajes o actualizaciones
+      if (data.viajes?.length) {
+        const formattedRides: RideRequest[] = data.viajes
+          .filter((viaje: any) => {
+            // Filtrar viajes cancelados o inválidos
+            return viaje.estado !== "cancelado" && 
+                   viaje.estado !== "finalizado" && 
+                   viaje.estado !== "aceptado"
+          })
+          .map((viaje: any) => ({
+            id: viaje.id.toString(),
+            passengerName: viaje.pasajero_nombre ? viaje.pasajero_nombre.split(" ")[0] : "Pasajera",
+            pickupAddress: viaje.ubicacionActual || "",
+            pickupNeighborhood: viaje.barrioActual || "",
+            pickupZone: viaje.zonaActual || "",
+            destinationAddress: viaje.destinoDireccion || "",
+            destinationNeighborhood: viaje.destinoBarrio || "",
+            destinationZone: viaje.destinoZona || "",
+            proposedPrice: Number(viaje.valorPersonalizado ?? 0),
+            counterOfferPrice: viaje.valor_contraoferta
+              ? Number(viaje.valor_contraoferta)
+              : undefined,
+            status: viaje.estado === "negociacion" ? "negotiation" : "pending",
+            passenger: {
+              phone: "N/A",
+              whatsapp: "N/A",
+            },
+          }))
+          .filter((ride: RideRequest) => {
+            const isRejected = rejectedRides.has(ride.id)
+            if (isRejected) {
+              console.log(`🚫 Viaje ${ride.id} filtrado (rechazado previamente)`)
+            }
+            return !isRejected
+          })
+
+        console.log("✅ Viajes válidos recibidos:", formattedRides.length)
+
+        // Actualizar lista con validación adicional
+        setRideRequests((prev) => {
+          // Si no hay viajes nuevos válidos, limpiar la lista
+          if (formattedRides.length === 0) {
+            if (prev.length > 0) {
+              console.log("🧹 No hay viajes válidos - limpiando lista")
+              hasChanges = true
+            }
+            return []
+          }
+
+          // Combinar viajes existentes con nuevos
+          const updatedList = formattedRides.reduce((accList, newRide) => {
+            const existingIndex = accList.findIndex((r) => r.id === newRide.id)
+            if (existingIndex !== -1) {
+              // Actualizar viaje existente
+              accList[existingIndex] = {
+                ...accList[existingIndex],
+                status: newRide.status,
+                counterOfferPrice: newRide.counterOfferPrice,
+              }
+            } else {
+              // Agregar nuevo viaje
+              accList.push(newRide)
+              hasChanges = true
+            }
+            return accList
+          }, [...prev])
+
+          if (hasChanges) {
+            console.log(`🔄 Lista actualizada: ${prev.length} → ${updatedList.length}`)
+          }
+
+          return updatedList
+        })
+      } else {
+        // Si no hay viajes en la respuesta, limpiar la lista
+        setRideRequests((prev) => {
+          if (prev.length > 0) {
+            console.log("🧹 No hay viajes en respuesta - limpiando lista")
+            return []
+          }
+          return prev
+        })
+      }
+
+    } else {
+      console.warn("⚠️ Error de servidor al consultar viajes:", data)
+    }
+  } catch (error) {
+    console.error("❌ Error al conectar con la API:", error)
+  }
+}
 
   useEffect(() => {
     cleanupPolling()

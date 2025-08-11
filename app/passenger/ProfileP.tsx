@@ -44,6 +44,11 @@ const ProfileP = () => {
     }
   };
 
+
+   const navigateTo = (screen: any) => {
+    router.push(screen)
+  }
+
   useEffect(() => {
     fetchUserProfile();
   }, []);
@@ -100,7 +105,7 @@ const ProfileP = () => {
             <Text style={styles.optionText}>Ayuda y soporte</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.optionItem}>
+          <TouchableOpacity onPress={() => navigateTo("/recuperar/CambiarContrasena")} style={styles.optionItem}>
             <Text style={styles.optionText}>Cambiar contraseña</Text>
           </TouchableOpacity>
 
