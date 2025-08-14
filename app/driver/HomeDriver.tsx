@@ -13,6 +13,7 @@ interface RideRequest {
   pickupAddress: string
   pickupNeighborhood: string
   pickupZone: string
+  puntoReferencia?: string // ✅ AGREGADO: Punto de referencia
   destinationAddress: string
   destinationNeighborhood: string
   destinationZone: string
@@ -214,6 +215,7 @@ const HomeDriver = () => {
           pickupAddress: viajeAceptado.ubicacionActual || "",
           pickupNeighborhood: viajeAceptado.barrioActual || "",
           pickupZone: viajeAceptado.zonaActual || "",
+          puntoReferencia: viajeAceptado.puntoReferencia || "", // ✅ AGREGADO
           destinationAddress: viajeAceptado.destinoDireccion || "",
           destinationNeighborhood: viajeAceptado.destinoBarrio || "",
           destinationZone: viajeAceptado.destinoZona || "",
@@ -272,12 +274,54 @@ const HomeDriver = () => {
     await saveDriverActiveStatus(newStatus)
   }
 
+  // ✅ FUNCIONALIDAD MEJORADA PARA WHATSAPP Y LLAMADAS
   const openWhatsApp = (whatsapp: string) => {
-    Linking.openURL(`whatsapp://send?phone=${whatsapp}`).catch(() => Alert.alert("Error", "No se pudo abrir WhatsApp."))
+    // Limpiar el número de teléfono (remover espacios, guiones, paréntesis)
+    const cleanNumber = whatsapp.replace(/[\s\-\(\)\+]/g, "")
+    
+    // Si no empieza con código de país, agregar +57 para Colombia
+    const formattedNumber = cleanNumber.startsWith("57") ? cleanNumber : `57${cleanNumber}`
+    
+    console.log("📱 Abriendo WhatsApp:", formattedNumber)
+    
+    const whatsappUrl = `whatsapp://send?phone=${formattedNumber}`
+    
+    Linking.canOpenURL(whatsappUrl)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(whatsappUrl)
+        } else {
+          // Si WhatsApp no está instalado, abrir en el navegador
+          const webUrl = `https://wa.me/${formattedNumber}`
+          return Linking.openURL(webUrl)
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Error al abrir WhatsApp:", error)
+        Alert.alert("Error", "No se pudo abrir WhatsApp. Verifica que esté instalado.")
+      })
   }
 
   const callPassenger = (phone: string) => {
-    Linking.openURL(`tel:${phone.replace(/\s/g, "")}`)
+    // Limpiar el número de teléfono
+    const cleanNumber = phone.replace(/[\s\-\(\)\+]/g, "")
+    
+    console.log("📞 Llamando a:", cleanNumber)
+    
+    const phoneUrl = `tel:${cleanNumber}`
+    
+    Linking.canOpenURL(phoneUrl)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(phoneUrl)
+        } else {
+          Alert.alert("Error", "No se puede realizar la llamada desde este dispositivo.")
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Error al realizar llamada:", error)
+        Alert.alert("Error", "No se pudo realizar la llamada.")
+      })
   }
 
   const handlePriceEdit = (requestId: string, currentPrice: number) => {
@@ -572,6 +616,7 @@ const checkContraofertaAceptada = async () => {
         pickupAddress: viajeAceptado.ubicacionActual || "",
         pickupNeighborhood: viajeAceptado.barrioActual || "",
         pickupZone: viajeAceptado.zonaActual || "",
+        puntoReferencia: viajeAceptado.puntoReferencia || "", // ✅ AGREGADO
         destinationAddress: viajeAceptado.destinoDireccion || "",
         destinationNeighborhood: viajeAceptado.destinoBarrio || "",
         destinationZone: viajeAceptado.destinoZona || "",
@@ -772,6 +817,7 @@ const fetchPendingRides = async () => {
             pickupAddress: viaje.ubicacionActual || "",
             pickupNeighborhood: viaje.barrioActual || "",
             pickupZone: viaje.zonaActual || "",
+            puntoReferencia: viaje.puntoReferencia || "", // ✅ AGREGADO: Punto de referencia
             destinationAddress: viaje.destinoDireccion || "",
             destinationNeighborhood: viaje.destinoBarrio || "",
             destinationZone: viaje.destinoZona || "",
@@ -781,8 +827,8 @@ const fetchPendingRides = async () => {
               : undefined,
             status: viaje.estado === "negociacion" ? "negotiation" : "pending",
             passenger: {
-              phone: "N/A",
-              whatsapp: "N/A",
+              phone: viaje.pasajero_telefono || "N/A", // ✅ AGREGADO: Teléfono real del pasajero
+              whatsapp: viaje.pasajero_telefono || "N/A", // ✅ AGREGADO: WhatsApp real del pasajero
             },
           }))
           .filter((ride: RideRequest) => {
@@ -901,6 +947,7 @@ const fetchPendingRides = async () => {
           </View>
           <View style={styles.passengerDetailInfo}>
             <Text style={styles.passengerNameLarge}>{acceptedRide.passengerName}</Text>
+            {/* ✅ BOTONES DE CONTACTO SOLO CUANDO EL VIAJE ESTÁ ACEPTADO */}
             <View style={styles.contactButtonsLarge}>
               <TouchableOpacity
                 style={styles.whatsappButtonLarge}
@@ -929,6 +976,12 @@ const fetchPendingRides = async () => {
               <Text style={styles.routePointNeighborhood}>
                 {acceptedRide.pickupNeighborhood} • {acceptedRide.pickupZone}
               </Text>
+              {/* ✅ MOSTRAR PUNTO DE REFERENCIA SI EXISTE */}
+              {acceptedRide.puntoReferencia && (
+                <Text style={styles.routePointReference}>
+                  📍 {acceptedRide.puntoReferencia}
+                </Text>
+              )}
             </View>
           </View>
           <View style={styles.routeLine} />
@@ -970,7 +1023,7 @@ const fetchPendingRides = async () => {
 
     return (
       <View style={styles.rideRequestCard}>
-        {/* Header compacto con indicador de estado */}
+        {/* ✅ HEADER SIN BOTONES DE CONTACTO */}
         <View style={styles.requestHeader}>
           <View style={styles.passengerInfo}>
             <View style={styles.passengerIcon}>
@@ -986,20 +1039,7 @@ const fetchPendingRides = async () => {
               </View>
             )}
           </View>
-          <View style={styles.contactActions}>
-            <TouchableOpacity 
-              style={styles.whatsappButton} 
-              onPress={() => openWhatsApp(item.passenger.whatsapp)}
-            >
-              <FontAwesome name="whatsapp" size={18} color="#25D366" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.callButton} 
-              onPress={() => callPassenger(item.passenger.phone)}
-            >
-              <FontAwesome name="phone" size={18} color="#FF69B4" />
-            </TouchableOpacity>
-          </View>
+          {/* ✅ ELIMINADOS: Los botones de WhatsApp y teléfono */}
         </View>
 
         {/* Ubicaciones en layout horizontal */}
@@ -1015,6 +1055,12 @@ const fetchPendingRides = async () => {
                 <Text style={styles.locationNeighborhood}>
                   {item.pickupNeighborhood} • {item.pickupZone}
                 </Text>
+                {/* ✅ PUNTO DE REFERENCIA EN SOLICITUDES PENDIENTES */}
+                {item.puntoReferencia && (
+                  <Text style={styles.referencePoint}>
+    <Text style={styles.referenceLabel}>Punto referencia:</Text> {item.puntoReferencia}
+  </Text>
+                )}
               </View>
             </View>
             <View style={styles.locationArrow}>
@@ -1023,10 +1069,14 @@ const fetchPendingRides = async () => {
             <View style={styles.locationCompact}>
               <View style={[styles.locationDot, styles.destinationDot]} />
               <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>DESTINO</Text>
-                <Text style={styles.locationAddress} numberOfLines={1}>
-                  {item.destinationAddress || "Destino no disponible"}
-                </Text>
+                <Text style={styles.locationLabel2}>DESTINO</Text>
+                <Text
+  style={[styles.locationAddress, { flexShrink: 1, flexWrap: "wrap" }]}
+>
+  {item.destinationAddress || "Destino no disponible"}
+</Text>
+
+
                 <Text style={styles.locationNeighborhood}>
                   {item.destinationNeighborhood} • {item.destinationZone}
                 </Text>
@@ -1105,16 +1155,17 @@ const fetchPendingRides = async () => {
           <TouchableOpacity
             style={[
               styles.acceptButton, 
-              item.status === "negotiation" && styles.acceptButtonDisabled
+              (item.status === "negotiation" || editingPrice === item.id) && styles.acceptButtonDisabled
             ]}
             onPress={() => acceptRide(item.id)}
-            disabled={item.status === "negotiation"}
+            disabled={item.status === "negotiation" || editingPrice === item.id}
           >
             <Text style={[
               styles.acceptButtonText, 
-              item.status === "negotiation" && styles.acceptButtonTextDisabled
+              (item.status === "negotiation" || editingPrice === item.id) && styles.acceptButtonTextDisabled
             ]}>
-              {item.status === "negotiation" ? "En negociación" : "Aceptar"}
+              {item.status === "negotiation" ? "En negociación" : 
+               editingPrice === item.id ? "Negociando precio" : "Aceptar"}
             </Text>
           </TouchableOpacity>
         </View>

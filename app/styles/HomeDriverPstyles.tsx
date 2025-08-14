@@ -143,8 +143,16 @@ const styles = StyleSheet.create({
   },
   locationInfo: {
     flex: 1,
+    flexDirection: "column", 
   },
   locationLabel: {
+    fontSize: 11, // Aumentado de 9 a 11
+    color: "#666",
+    marginBottom: 2, // Aumentado de 1 a 2
+    fontWeight: "600",
+  },
+  locationLabel2: {
+    marginTop: -16,
     fontSize: 11, // Aumentado de 9 a 11
     color: "#666",
     marginBottom: 2, // Aumentado de 1 a 2
@@ -155,6 +163,7 @@ const styles = StyleSheet.create({
     fontWeight: "600", // Aumentado de 500 a 600
     color: "#333",
     marginBottom: 2,
+    flexWrap: "wrap", // ✅ Permite salto de línea
   },
   locationNeighborhood: {
     fontSize: 12, // Aumentado de 9 a 12
@@ -265,6 +274,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
   },
+  routePointReference: {
+  marginTop: 4,
+},
+
+referenceLabel: {
+  color: "#FF69B4", // Rosa para la etiqueta
+  fontWeight: "600", // Un poquito más resaltado
+},
+
+referencePoint: {
+  fontSize: 12,
+  color: "#888", // Gris para el contenido
+  flexWrap: "wrap",
+},
+
+
   // ESTILOS MEJORADOS PARA LA VISTA DE VIAJE ACEPTADO
   acceptedRideContainer: {
     flex: 1,
