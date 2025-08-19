@@ -118,7 +118,7 @@ const ProfileP = () => {
           </TouchableOpacity>
           
           <TouchableOpacity
-                onPress={() => navigateTo("/recuperar/CambiarContrasena")}>
+                onPress={() => navigateTo("/recuperar/CambiarContrasena")}style={styles.optionItem}>
   <Text style={styles.optionText}>Cambiar contraseña</Text>
 </TouchableOpacity>
 
