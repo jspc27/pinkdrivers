@@ -12,49 +12,58 @@ const RegisterP = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
-const [alertMessage, setAlertMessage] = useState('');
 
+  // alert
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
 
   const handleRegister = async () => {
-  if (!name || !email || !phone || !password) {
-    setAlertMessage("Todos los campos son obligatorios.");
-    setShowAlert(true);
-    return;
-  }
-
-  try {
-    const response = await fetch('https://www.pinkdrivers.com/api-rest/index.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        nombre_completo: name,
-        email,
-        telefono: phone,
-        password
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      setAlertMessage("Registro completado correctamente.");
+    if (!name || !email || !phone || !password) {
+      setAlertMessage("❌ Todos los campos son obligatorios.");
       setShowAlert(true);
-      setTimeout(() => {
-        setShowAlert(false);
-        router.push('/passenger/LoginP');
-      }, 2000); // Espera 2 segundos antes de redirigir
-    } else {
-      setAlertMessage(data.message || "Ocurrió un error.");
+      return;
+    }
+
+    if (phone.length !== 10) {
+      setAlertMessage("❌ El número de teléfono debe tener exactamente 10 dígitos.");
+      setShowAlert(true);
+      return;
+    }
+
+    try {
+      const response = await fetch('https://www.pinkdrivers.com/api-rest/index.php?action=register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre_completo: name,
+          email,
+          telefono: phone,
+          password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAlertMessage("✅ Registro completado correctamente.");
+        setShowAlert(true);
+
+        setTimeout(() => {
+          setShowAlert(false);
+          router.push('/passenger/LoginP');
+        }, 2000); 
+      } else {
+        // error: usuario ya registrado
+        setAlertMessage(`❌ ${data.message || "Ocurrió un error."}`);
+        setShowAlert(true);
+      }
+    } catch (error) {
+      setAlertMessage("❌ No se pudo conectar al servidor.");
       setShowAlert(true);
     }
-  } catch (error) {
-    setAlertMessage("No se pudo conectar al servidor.");
-    setShowAlert(true);
-  }
-};
+  };
 
   return (
     <LinearGradient
@@ -108,10 +117,14 @@ const [alertMessage, setAlertMessage] = useState('');
                 placeholder="Teléfono"
                 placeholderTextColor="#999"
                 value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
+                onChangeText={(text) => {
+                  const numericValue = text.replace(/[^0-9]/g, '');
+                  setPhone(numericValue);
+                }}
+                keyboardType="numeric"
                 autoCapitalize="none"
                 style={styles.input}
+                maxLength={10}
               />
             </View>
 
@@ -151,11 +164,13 @@ const [alertMessage, setAlertMessage] = useState('');
               <Text style={styles.signupLink}>Iniciar Sesión</Text>
             </TouchableOpacity>
           </View>
+          
+          {/* StyledAlert con el mensaje que ya incluye el icono ❌ o ✅ */}
           <StyledAlert
-  visible={showAlert}
-  message={alertMessage}
-  onClose={() => setShowAlert(false)}
-/>
+            visible={showAlert}
+            message={alertMessage}
+            onClose={() => setShowAlert(false)}
+          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
