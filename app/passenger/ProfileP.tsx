@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import styles from "../styles/ProfilePstyles";
 
 const ProfileP = () => {
@@ -43,6 +43,21 @@ const ProfileP = () => {
       Alert.alert("Error", "Fallo al conectar con el servidor.");
     }
   };
+  const openWhatsApp = () => {
+  const phoneNumber = "573045720945"; // Número con código de país de Colombia
+  const message = "Hola, necesito ayuda y soporte con la aplicación Pink Drivers";
+  const whatsappURL = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+  
+  Linking.canOpenURL(whatsappURL)
+    .then((supported) => {
+      if (supported) {
+        Linking.openURL(whatsappURL);
+      } else {
+        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo");
+      }
+    })
+    .catch((err) => console.error("Error al abrir WhatsApp:", err));
+};
 
 
    const navigateTo = (screen: any) => {
@@ -101,9 +116,9 @@ const ProfileP = () => {
         </View>
 
         <View style={styles.optionsSection}>
-          <TouchableOpacity style={styles.optionItem}>
-            <Text style={styles.optionText}>Ayuda y soporte</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionItem} onPress={openWhatsApp}>
+  <Text style={styles.optionText}>Ayuda y soporte</Text>
+</TouchableOpacity>
           
           <TouchableOpacity onPress={() => navigateTo("/recuperar/CambiarContrasena")} style={styles.optionItem}>
             <Text style={styles.optionText}>Cambiar contraseña</Text>
