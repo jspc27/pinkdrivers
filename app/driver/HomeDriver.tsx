@@ -1114,6 +1114,7 @@ const fetchPendingRides = async () => {
             <View style={styles.priceEditContainer}>
               <TextInput
                 style={styles.priceInput}
+                //no arreglar hasta ver otra manera de que funcione completamente, el error no interfiere en nada
                 value={counterOfferPrice}
                 onChangeText={setCounterOfferPrice}
                 keyboardType="numeric"
