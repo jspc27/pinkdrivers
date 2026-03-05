@@ -12,11 +12,12 @@ const Index = () => {
       const rol = await AsyncStorage.getItem('rol');
 
       if (token && rol) {
-        // Redirige al home según el rol
         if (rol === 'conductora') {
           router.replace('/driver/HomeDriver');
         } else if (rol === 'pasajero') {
           router.replace('/passenger/HomeP');
+        } else if (rol === 'domiciliario') {
+          router.replace('/delivery/HomeDelivery');
         }
       }
     };
@@ -50,6 +51,14 @@ const Index = () => {
             onPress={() => router.push('/driver/LoginD')}
           >
             <Text style={styles.buttonText}>Soy conductora</Text>
+          </TouchableOpacity>
+
+          {/* Nuevo botón domiciliario */}
+          <TouchableOpacity 
+            style={styles.button}
+            onPress={() => router.push('/delivery/LoginDelivery')}
+          >
+            <Text style={styles.buttonText}>Soy domiciliari@</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
