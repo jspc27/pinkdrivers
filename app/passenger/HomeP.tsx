@@ -1216,7 +1216,15 @@ const HomeP = () => {
                   {/* ✅ CORRECCIÓN 4: Botón X cierra sin llamar closeModal() */}
                   <TouchableOpacity
                     style={styles.cancelButton}
-                    onPress={() => {
+                    onPress={async () => {
+                      try {
+                        const token = await AsyncStorage.getItem("token")
+                        await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega", {
+                          method: "POST",
+                          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                          body: JSON.stringify({})
+                        })
+                      } catch (e) { console.error("Error al cancelar entrega:", e) }
                       setIsWaitingForDelivery(false)
                       setEntregaResumen(null)
                       setIsModalVisible(false)
@@ -1271,7 +1279,15 @@ const HomeP = () => {
                   {/* ✅ CORRECCIÓN 5: Botón cancelar NO llama closeModal() */}
                   <TouchableOpacity
                     style={[styles.cancelSearchButton, { borderColor: '#5A189A' }]}
-                    onPress={() => {
+                    onPress={async () => {
+                      try {
+                        const token = await AsyncStorage.getItem("token")
+                        await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega", {
+                          method: "POST",
+                          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                          body: JSON.stringify({})
+                        })
+                      } catch (e) { console.error("Error al cancelar entrega:", e) }
                       setIsWaitingForDelivery(false)
                       setEntregaResumen(null)
                       setIsModalVisible(false)
