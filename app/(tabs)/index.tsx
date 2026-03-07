@@ -31,7 +31,7 @@ const Index = () => {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/LogoPink.png')} 
+            source={require('../../assets/images/LogoPink3.png')} 
             style={styles.logo}
             resizeMode="contain"
           />

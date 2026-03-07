@@ -156,7 +156,7 @@ const HomeDelivery = () => {
         if (!token) return
 
         const response = await fetch(
-          "https://www.pinkdrivers.com/api-rest/index.php?action=pedido_aceptado_domiciliario",
+          "https://www.pinkdrivers.com/api-rest/index.php?action=entrega_aceptada_domiciliario",
           { headers: { Authorization: `Bearer ${token}` } }
         )
 
@@ -277,11 +277,11 @@ const HomeDelivery = () => {
       if (!token) { Alert.alert("Error", "Token no encontrado"); return }
 
       const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=crear_contraoferta_pedido",
+        "https://www.pinkdrivers.com/api-rest/index.php?action=crear_contraoferta_entrega",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ pedido_id: requestId, nuevo_precio: newPrice }),
+          body: JSON.stringify({ entrega_id: requestId, nuevo_precio: newPrice }),
         }
       )
 
@@ -314,11 +314,11 @@ const HomeDelivery = () => {
       if (!token) { Alert.alert("Error", "Token no encontrado"); return }
 
       const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_pedido_directo",
+        "https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_entrega_directo",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ pedido_id: requestId }),
+          body: JSON.stringify({ entrega_id: requestId }),
         }
       )
 
@@ -364,11 +364,11 @@ const HomeDelivery = () => {
           try {
             const token = await AsyncStorage.getItem("token")
             const response = await fetch(
-              "https://www.pinkdrivers.com/api-rest/index.php?action=finalizar_pedido",
+              "https://www.pinkdrivers.com/api-rest/index.php?action=finalizar_entrega",
               {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ pedido_id: acceptedDelivery.id }),
+                body: JSON.stringify({ entrega_id: acceptedDelivery.id }),
               }
             )
 
@@ -404,11 +404,11 @@ const HomeDelivery = () => {
           try {
             const token = await AsyncStorage.getItem("token")
             const response = await fetch(
-              "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_pedido",
+              "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega",
               {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ pedido_id: acceptedDelivery.id }),
+                body: JSON.stringify({ entrega_id: acceptedDelivery.id }),
               }
             )
 
@@ -454,7 +454,7 @@ const HomeDelivery = () => {
       if (!token) return
 
       const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=pedido_aceptado_domiciliario",
+        "https://www.pinkdrivers.com/api-rest/index.php?action=entrega_aceptada_domiciliario",
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
@@ -529,7 +529,7 @@ const HomeDelivery = () => {
         for (const rid of currentIds) {
           try {
             const res = await fetch(
-              `https://www.pinkdrivers.com/api-rest/index.php?action=verificar_estado_pedido&pedido_id=${rid}`,
+              `https://www.pinkdrivers.com/api-rest/index.php?action=verificar_estado_entrega&entrega_id=${rid}`,
               { headers: { Authorization: `Bearer ${token}` } }
             )
 
@@ -560,7 +560,7 @@ const HomeDelivery = () => {
       }
 
       const currentIdsStr = deliveryRequests.map((r) => r.id).join(",")
-      const url = `https://www.pinkdrivers.com/api-rest/index.php?action=pedidos_pendientes&checkStates=true&currentIds=${currentIdsStr}&timestamp=${now}`
+      const url = `https://www.pinkdrivers.com/api-rest/index.php?action=entregas_pendientes&checkStates=true&currentIds=${currentIdsStr}&timestamp=${now}`
 
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       const data = await response.json()

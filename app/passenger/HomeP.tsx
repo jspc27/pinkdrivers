@@ -27,8 +27,11 @@ import {
 } from "react-native"
 import styles from "../styles/HomePstyles"
 
-const { height: screenHeight, width: screenWidth } = Dimensions.get("window")
+const { height: screenHeight } = Dimensions.get("window")
 
+// ─────────────────────────────────────────────
+// INTERFACES
+// ─────────────────────────────────────────────
 interface ContraofertaData {
   viaje_id: number
   valorPersonalizado: string
@@ -57,48 +60,109 @@ interface AcceptedTripData {
   vehiculo_color?: string
 }
 
+interface AcceptedEntregaData {
+  id: number
+  domiciliario_nombre: string
+  domiciliario_telefono: string
+  vehiculo_tipo: string
+  direccion_recogida: string
+  barrio_recogida: string
+  direccion_entrega: string
+  barrio_entrega: string
+  precio_ofrecido: number
+  estado: string
+}
+
+// ─────────────────────────────────────────────
+// COMPONENTE PRINCIPAL
+// ─────────────────────────────────────────────
 const HomeP = () => {
+
+  // ── UI / Menú ──────────────────────────────
   const [menuVisible, setMenuVisible] = useState(false)
+  const [isModalVisible, setIsModalVisible] = useState(false)
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const [activeField, setActiveField] = useState<string | null>(null)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [serviceMode, setServiceMode] = useState<'viajes' | 'pinkentregas' | null>(null)
+
+  // ── Ubicación ──────────────────────────────
   const [ubicacionActual, setUbicacionActual] = useState("")
   const [barrioActual, setBarrioActual] = useState("")
   const [zonaActual, setZonaActual] = useState("")
   const [ciudadActual, setCiudadActual] = useState("")
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [locationLoading, setLocationLoading] = useState(true)
+
+  // ── Formulario Viajes ──────────────────────
   const [destinoDireccion, setDestinoDireccion] = useState("")
   const [destinoBarrio, setDestinoBarrio] = useState("")
   const [destinoZona, setDestinoZona] = useState("")
   const [puntoReferencia, setPuntoReferencia] = useState("")
   const [valorPersonalizado, setValorPersonalizado] = useState("")
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
-  const [activeField, setActiveField] = useState<string | null>(null)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
-
-  const [isWaitingForDriver, setIsWaitingForDriver] = useState(false)
-  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
-
-  const [contraofertaData, setContraofertaData] = useState<ContraofertaData | null>(null)
-  const [showContraoferta, setShowContraoferta] = useState(false)
-  const [isProcessingResponse, setIsProcessingResponse] = useState(false)
-
-  const [acceptedTrip, setAcceptedTrip] = useState<AcceptedTripData | null>(null)
-  const [isLoadingAcceptedTrip, setIsLoadingAcceptedTrip] = useState(false)
-
-  const [currentLocation, setCurrentLocation] = useState<{
-    latitude: number
-    longitude: number
-  } | null>(null)
-
-  const [locationLoading, setLocationLoading] = useState(true)
-
   const [selectedVehicle, setSelectedVehicle] = useState("")
   const [routeDistance, setRouteDistance] = useState<number | null>(null)
   const [priceEstimate, setPriceEstimate] = useState<number | null>(null)
 
+  // ── Formulario PinkEntregas ────────────────
+  const [senderName, setSenderName] = useState("")
+  const [senderPhone, setSenderPhone] = useState("")
+  const [receiverName, setReceiverName] = useState("")
+  const [receiverPhone, setReceiverPhone] = useState("")
+  const [pickupAddress, setPickupAddress] = useState("")
+  const [pickupBarrio, setPickupBarrio] = useState("")
+  const [pickupZona, setPickupZona] = useState("")
+  const [pickupCiudad, setPickupCiudad] = useState("")
+  const [deliveryAddress, setDeliveryAddress] = useState("")
+  const [deliveryBarrio, setDeliveryBarrio] = useState("")
+  const [deliveryZona, setDeliveryZona] = useState("")
+  const [deliveryCiudad, setDeliveryCiudad] = useState("")
+  const [isFragile, setIsFragile] = useState<boolean | null>(null)
+  const [deliveryNotes, setDeliveryNotes] = useState("")
+  const [deliveryPrice, setDeliveryPrice] = useState("")
+  const [deliveryVehicle, setDeliveryVehicle] = useState("")
+
+  // ── Estado Viajes ──────────────────────────
+  const [isWaitingForDriver, setIsWaitingForDriver] = useState(false)
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
+  const [contraofertaData, setContraofertaData] = useState<ContraofertaData | null>(null)
+  const [showContraoferta, setShowContraoferta] = useState(false)
+  const [isProcessingResponse, setIsProcessingResponse] = useState(false)
+  const [acceptedTrip, setAcceptedTrip] = useState<AcceptedTripData | null>(null)
+  const [isLoadingAcceptedTrip, setIsLoadingAcceptedTrip] = useState(false)
+
+  // ── Estado PinkEntregas ────────────────────
+  const [isWaitingForDelivery, setIsWaitingForDelivery] = useState(false)
+  const [contraofertaEntregaData, setContraofertaEntregaData] = useState<{
+    entrega_id: number
+    valorPersonalizado: string
+    precio_original: string
+    domiciliario_nombre: string
+    domiciliario_telefono: string
+    vehiculo_tipo: string
+  } | null>(null)
+  const [showContraofertaEntrega, setShowContraofertaEntrega] = useState(false)
+  const [isProcessingEntregaResponse, setIsProcessingEntregaResponse] = useState(false)
+  const [acceptedEntrega, setAcceptedEntrega] = useState<AcceptedEntregaData | null>(null)
+  const [entregaResumen, setEntregaResumen] = useState<{
+    recogida: string
+    entrega: string
+    precio: string
+    vehiculo: string
+  } | null>(null)
+
+  // ── Usuario ────────────────────────────────
+  const [usuarioId, setUsuarioId] = useState<number | null>(null)
+  const [usuarioData, setUsuarioData] = useState<any>(null)
+
+  // ── Refs ───────────────────────────────────
   const menuAnimation = useRef(new Animated.Value(0)).current
   const modalAnimation = useRef(new Animated.Value(screenHeight)).current
   const overlayAnimation = useRef(new Animated.Value(0)).current
   const scrollViewRef = useRef<ScrollView>(null)
-
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const entregaPollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastViajeIdRef = useRef<number | null>(null)
   const ubicacionActualRef = useRef<TextInput>(null)
   const barrioActualRef = useRef<TextInput>(null)
   const ciudadActualRef = useRef<TextInput>(null)
@@ -107,51 +171,12 @@ const HomeP = () => {
   const referenciaRef = useRef<TextInput>(null)
   const precioRef = useRef<TextInput>(null)
 
-  const [usuarioId, setUsuarioId] = useState<number | null>(null)
-  const [usuarioData, setUsuarioData] = useState<any>(null)
-
-  // ✅ CORRECCIÓN 1: isWaitingForDelivery mantenido separado de closeModal
-  const [isWaitingForDelivery, setIsWaitingForDelivery] = useState(false)
-
-  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const lastViajeIdRef = useRef<number | null>(null)
-
-  const [serviceMode, setServiceMode] = useState<'viajes' | 'pinkentregas' | null>(null)
-
+  // ── Estilos dinámicos PE ───────────────────
   const isPE = serviceMode === 'pinkentregas'
-  const dynHeader     = isPE ? styles.modalHeaderPE     : styles.modalHeader
-  const dynTitle      = isPE ? styles.modalTitlePE      : styles.modalTitle
-  const dynInput      = isPE ? styles.modalInputPE      : styles.modalInput
-  const dynInputFocus = isPE ? styles.modalInputFocusedPE : styles.modalInputFocused
-  const dynButton     = isPE ? styles.modalButtonPE     : styles.modalButton
-  const dynBtnDis     = isPE ? styles.modalButtonDisabledPE : styles.modalButtonDisabled
-  const dynVehicleSel = isPE ? styles.selectedVehicleOptionPE : styles.selectedVehicleOption
-  const dynSecTitle   = isPE ? styles.sectionTitlePE    : styles.sectionTitle
+  const dynHeader = isPE ? styles.modalHeaderPE : styles.modalHeader
+  const dynTitle = isPE ? styles.modalTitlePE : styles.modalTitle
 
-  const [senderName, setSenderName] = useState("")
-  const [senderPhone, setSenderPhone] = useState("")
-  const [receiverName, setReceiverName] = useState("")
-  const [receiverPhone, setReceiverPhone] = useState("")
-  const [pickupAddress, setPickupAddress] = useState("")
-  const [deliveryAddress, setDeliveryAddress] = useState("")
-  const [isFragile, setIsFragile] = useState<boolean | null>(null)
-  const [deliveryNotes, setDeliveryNotes] = useState("")
-  const [deliveryPrice, setDeliveryPrice] = useState("")
-  const [deliveryVehicle, setDeliveryVehicle] = useState("")
-  const [pickupBarrio, setPickupBarrio] = useState("")
-  const [pickupZona, setPickupZona] = useState("")
-  const [pickupCiudad, setPickupCiudad] = useState("")
-  const [deliveryBarrio, setDeliveryBarrio] = useState("")
-  const [deliveryZona, setDeliveryZona] = useState("")
-  const [deliveryCiudad, setDeliveryCiudad] = useState("")
-
-  const [entregaResumen, setEntregaResumen] = useState<{
-    recogida: string
-    entrega: string
-    precio: string
-    vehiculo: string
-  } | null>(null)
-
+  // ── Zonas disponibles ──────────────────────
   const zonasDisponibles = [
     { label: "Seleccionar zona", value: "" },
     { label: "Norte", value: "Norte" },
@@ -160,19 +185,18 @@ const HomeP = () => {
     { label: "Occidente", value: "Occidente" },
   ]
 
+  // ─────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────
   const decodeJWT = (token: string) => {
     try {
       const base64Url = token.split(".")[1]
       const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
       const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split("")
-          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-          .join(""),
+        atob(base64).split("").map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""),
       )
       return JSON.parse(jsonPayload)
-    } catch (error) {
-      console.error("Error decodificando JWT:", error)
+    } catch {
       return null
     }
   }
@@ -186,56 +210,35 @@ const HomeP = () => {
 
   const parseJSONSafely = (text: string) => {
     try {
-      if (!text || text.trim() === '') {
-        console.warn("⚠️ Respuesta vacía del servidor")
-        return { error: "Respuesta vacía", isEmpty: true }
-      }
-      const parsed = JSON.parse(text)
-      return parsed
-    } catch (error) {
-      console.error("❌ Error al parsear JSON:", error)
-      console.error("❌ Texto recibido:", text)
-      return { error: "Error al parsear JSON", originalText: text }
+      if (!text || text.trim() === '') return { error: "Respuesta vacía", isEmpty: true }
+      return JSON.parse(text)
+    } catch {
+      return { error: "Error al parsear JSON" }
     }
   }
 
   const fetchWithErrorHandling = async (url: string, options: RequestInit = {}) => {
     try {
-      console.log(`🌐 Haciendo petición a: ${url}`)
       const response = await fetch(url, { ...options })
-      if (!response.ok) {
-        console.error(`❌ Error HTTP ${response.status}: ${response.statusText}`)
-        return { success: false, error: `Error HTTP ${response.status}`, status: response.status }
-      }
+      if (!response.ok) return { success: false, error: `Error HTTP ${response.status}`, status: response.status }
       const responseText = await response.text()
-      console.log(`📥 Respuesta cruda (${responseText.length} chars):`, responseText.substring(0, 200) + '...')
       const parsedData = parseJSONSafely(responseText)
-      if (parsedData.error) {
-        return {
-          success: false,
-          error: parsedData.error,
-          originalText: parsedData.originalText || responseText,
-          isEmpty: parsedData.isEmpty || false
-        }
-      }
+      if (parsedData.error) return { success: false, error: parsedData.error, isEmpty: parsedData.isEmpty || false }
       return { success: true, data: parsedData, response }
     } catch (error) {
-      console.error("❌ Error en fetchWithErrorHandling:", error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Error desconocido",
-        isNetworkError: true
-      }
+      return { success: false, error: error instanceof Error ? error.message : "Error desconocido", isNetworkError: true }
     }
   }
 
+  // ─────────────────────────────────────────────
+  // UBICACIÓN
+  // ─────────────────────────────────────────────
   const obtenerDireccion = async (lat: number, lng: number) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
         headers: { "User-Agent": "PinkDrivers (soportepinkdrivers@gmail.com)" },
       })
-      const textResponse = await response.text()
-      const data = JSON.parse(textResponse)
+      const data = JSON.parse(await response.text())
       if (data.address) {
         setUbicacionActual(data.address.road || "Ubicación no encontrada")
         setBarrioActual(data.address.neighbourhood || data.address.suburb || "")
@@ -248,8 +251,7 @@ const HomeP = () => {
       } else {
         setUbicacionActual("Ubicación no encontrada")
       }
-    } catch (error) {
-      console.error("❌ Error al obtener la dirección:", error)
+    } catch {
       setUbicacionActual("Error al obtener ubicación")
     }
   }
@@ -260,27 +262,40 @@ const HomeP = () => {
       const { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== "granted") {
         Alert.alert("Permiso denegado", "No se pudo acceder a la ubicación")
-        setLocationLoading(false)
-        const defaultLocation = { latitude: 3.4516, longitude: -76.5319 }
-        setCurrentLocation(defaultLocation)
+        setCurrentLocation({ latitude: 3.4516, longitude: -76.5319 })
         return
       }
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
       const { latitude, longitude } = location.coords
       setCurrentLocation({ latitude, longitude })
       await obtenerDireccion(latitude, longitude)
-    } catch (error) {
-      console.error("❌ Error al obtener ubicación:", error)
+    } catch {
       Alert.alert("Error", "No se pudo obtener la ubicación actual")
-      const defaultLocation = { latitude: 3.4516, longitude: -76.5319 }
-      setCurrentLocation(defaultLocation)
+      setCurrentLocation({ latitude: 3.4516, longitude: -76.5319 })
     } finally {
       setLocationLoading(false)
     }
   }
 
+  const getUbicacionActualText = () => {
+    const partes = [ubicacionActual, barrioActual, zonaActual, ciudadActual].filter(Boolean)
+    return partes.length > 0 ? partes.join(" ") : "Obteniendo ubicación..."
+  }
+
+  // ─────────────────────────────────────────────
+  // LIMPIAR FORMULARIOS
+  // ─────────────────────────────────────────────
+  const limpiarFormulario = async () => {
+    setDestinoDireccion("")
+    setDestinoBarrio("")
+    setDestinoZona("")
+    setPuntoReferencia("")
+    setValorPersonalizado("")
+    setSelectedVehicle("")
+    await obtenerUbicacionActual()
+  }
+
   const limpiarFormularioCompleto = async () => {
-    console.log("🧹 Limpiando formulario completo...")
     setUbicacionActual("")
     setBarrioActual("")
     setZonaActual("")
@@ -300,76 +315,74 @@ const HomeP = () => {
     await obtenerUbicacionActual()
   }
 
+  // ─────────────────────────────────────────────
+  // POLLING — VIAJES
+  // ─────────────────────────────────────────────
   const stopPolling = () => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current)
       pollingIntervalRef.current = null
-      console.log("🛑 Polling detenido")
     }
   }
 
   const startPolling = (callback: () => void, interval: number = 5000) => {
     stopPolling()
-    console.log(`🔄 Iniciando polling cada ${interval}ms`)
     callback()
     pollingIntervalRef.current = setInterval(callback, interval)
+  }
+
+  const consultarContraoferta = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token")
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      })
+      const data = await response.json()
+      if (response.ok && data.success && data.data) {
+        setContraofertaData(data.data)
+        setShowContraoferta(true)
+      } else {
+        setContraofertaData(null)
+        setShowContraoferta(false)
+      }
+    } catch {
+      setContraofertaData(null)
+      setShowContraoferta(false)
+    }
   }
 
   const consultarViajeAceptado = async () => {
     try {
       setIsLoadingAcceptedTrip(true)
       const token = await AsyncStorage.getItem("token")
-      if (!token) {
-        console.error("❌ No hay token disponible")
-        setAcceptedTrip(null)
-        return
-      }
-      console.log("🟡 Consultando viaje aceptado...")
+      if (!token) { setAcceptedTrip(null); return }
+
       const result = await fetchWithErrorHandling(
         "https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
       )
       if (!result.success) {
-        if (result.isEmpty) {
-          setAcceptedTrip(null)
-          return
-        }
-        if (result.isNetworkError) {
-          console.error("❌ Error de red al consultar viaje:", result.error)
-          return
-        }
-        console.error("❌ Error al verificar estado del viaje:", result.error)
+        if (result.isNetworkError) return
         return
       }
+
       const data = result.data
-      console.log("🟡 Respuesta viaje aceptado parseada:", JSON.stringify(data, null, 2))
 
       if (data.viaje_cancelado) {
         if (!acceptedTrip || acceptedTrip.id !== data.viaje_cancelado.id || acceptedTrip.estado !== 'cancelado') {
-          const firstName = data.viaje_cancelado.conductora_nombre ?
-            data.viaje_cancelado.conductora_nombre.split(" ")[0] : "La conductora"
+          const firstName = data.viaje_cancelado.conductora_nombre?.split(" ")[0] || "La conductora"
           stopPolling()
-          Alert.alert(
-            "Viaje cancelado",
-            `${firstName} ha cancelado el viaje. Puedes solicitar un nuevo viaje.`,
-            [{
-              text: "OK",
-              onPress: async () => {
-                setAcceptedTrip(null)
-                setIsWaitingForDriver(false)
-                setShowContraoferta(false)
-                setContraofertaData(null)
-                lastViajeIdRef.current = null
-                await limpiarFormularioCompleto()
-              }
-            }]
-          )
+          Alert.alert("Viaje cancelado", `${firstName} ha cancelado el viaje. Puedes solicitar un nuevo viaje.`, [{
+            text: "OK", onPress: async () => {
+              setAcceptedTrip(null)
+              setIsWaitingForDriver(false)
+              setShowContraoferta(false)
+              setContraofertaData(null)
+              lastViajeIdRef.current = null
+              await limpiarFormularioCompleto()
+            }
+          }])
         }
         return
       }
@@ -380,13 +393,9 @@ const HomeP = () => {
           stopPolling()
           Alert.alert(
             "¡Viaje finalizado!",
-            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: $${Number(data.viaje_finalizado.valorPersonalizado).toLocaleString("es-CO", {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            })} \n\n¡Gracias por usar Pink Drivers!`,
+            `Tu viaje con ${firstName} ha finalizado exitosamente.\n\nTotal pagado: $${Number(data.viaje_finalizado.valorPersonalizado).toLocaleString("es-CO", { minimumFractionDigits: 0 })}\n\n¡Gracias por usar Pink Drivers!`,
             [{
-              text: "OK",
-              onPress: async () => {
+              text: "OK", onPress: async () => {
                 setAcceptedTrip(null)
                 setIsWaitingForDriver(false)
                 setShowContraoferta(false)
@@ -404,34 +413,27 @@ const HomeP = () => {
         if (data.viaje_aceptado.estado === 'cancelado') {
           if (acceptedTrip && acceptedTrip.id === data.viaje_aceptado.id && acceptedTrip.estado !== 'cancelado') {
             stopPolling()
-            Alert.alert(
-              "Viaje cancelado",
-              "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.",
-              [{
-                text: "OK",
-                onPress: async () => {
-                  setAcceptedTrip(null)
-                  setIsWaitingForDriver(false)
-                  setShowContraoferta(false)
-                  setContraofertaData(null)
-                  lastViajeIdRef.current = null
-                  await limpiarFormularioCompleto()
-                }
-              }]
-            )
+            Alert.alert("Viaje cancelado", "Tu viaje fue cancelado por la conductora. Puedes solicitar un nuevo viaje.", [{
+              text: "OK", onPress: async () => {
+                setAcceptedTrip(null)
+                setIsWaitingForDriver(false)
+                setShowContraoferta(false)
+                setContraofertaData(null)
+                lastViajeIdRef.current = null
+                await limpiarFormularioCompleto()
+              }
+            }])
           }
           return
         }
-        if (data.viaje_aceptado.estado !== 'cancelado') {
-          if (!acceptedTrip || acceptedTrip.id !== data.viaje_aceptado.id) {
-            setAcceptedTrip(data.viaje_aceptado)
-            lastViajeIdRef.current = data.viaje_aceptado.id
-          }
-          setIsWaitingForDriver(false)
-          setShowContraoferta(false)
-          setContraofertaData(null)
-          return
+        if (!acceptedTrip || acceptedTrip.id !== data.viaje_aceptado.id) {
+          setAcceptedTrip(data.viaje_aceptado)
+          lastViajeIdRef.current = data.viaje_aceptado.id
         }
+        setIsWaitingForDriver(false)
+        setShowContraoferta(false)
+        setContraofertaData(null)
+        return
       }
 
       if (acceptedTrip && !data.viaje_aceptado && !data.viaje_finalizado && !data.viaje_cancelado) {
@@ -451,146 +453,97 @@ const HomeP = () => {
     }
   }
 
-  useEffect(() => {
-    const configurarUbicacionInicial = async () => {
-      await obtenerUbicacionActual()
-      try {
-        await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: 30000,
-            distanceInterval: 100,
-          },
-          async (newLocation) => {
-            const { latitude: newLat, longitude: newLng } = newLocation.coords
-            setCurrentLocation(prevLocation => {
-              if (!prevLocation) return { latitude: newLat, longitude: newLng }
-              const latDiff = Math.abs(prevLocation.latitude - newLat)
-              const lngDiff = Math.abs(prevLocation.longitude - newLng)
-              if (latDiff > 0.001 || lngDiff > 0.001) {
-                return { latitude: newLat, longitude: newLng }
-              }
-              return prevLocation
-            })
-            if (!ubicacionActual ||
-              ubicacionActual === "Obteniendo ubicación..." ||
-              ubicacionActual === "Ubicación no encontrada" ||
-              ubicacionActual === "Error al obtener ubicación") {
-              await obtenerDireccion(newLat, newLng)
-            }
-          },
-        )
-      } catch (error) {
-        console.error("❌ Error configurando watcher:", error)
-      }
-    }
-    configurarUbicacionInicial()
-  }, [])
-
-  useEffect(() => {
-    if (acceptedTrip) {
-      startPolling(() => { consultarViajeAceptado() }, 5000)
-    } else if (isWaitingForDriver && !showContraoferta) {
-      startPolling(() => {
-        consultarContraoferta()
-        consultarViajeAceptado()
-      }, 7000)
-    } else {
-      stopPolling()
-    }
-    return () => { stopPolling() }
-  }, [isWaitingForDriver, showContraoferta, acceptedTrip?.id])
-
-  const cancelarViajeAceptado = async () => {
-    if (!acceptedTrip) return
-    Alert.alert(
-      "Cancelar viaje",
-      "¿Estás segura de que quieres cancelar este viaje?",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Sí, cancelar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsLoadingAcceptedTrip(true)
-              const token = await AsyncStorage.getItem("token")
-              const result = await fetchWithErrorHandling(
-                "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje",
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ viaje_id: acceptedTrip.id }),
-                }
-              )
-              if (result.success && result.data.success) {
-                stopPolling()
-                setAcceptedTrip(null)
-                setIsLoadingAcceptedTrip(false)
-                Alert.alert(
-                  "Viaje cancelado",
-                  "El viaje ha sido cancelado exitosamente",
-                  [{
-                    text: "OK",
-                    onPress: async () => {
-                      setIsWaitingForDriver(false)
-                      setShowContraoferta(false)
-                      setContraofertaData(null)
-                      lastViajeIdRef.current = null
-                      await limpiarFormularioCompleto()
-                    }
-                  }]
-                )
-              } else {
-                setIsLoadingAcceptedTrip(false)
-                Alert.alert("Error", result.data?.error || result.error || "No se pudo cancelar el viaje.")
-              }
-            } catch (error) {
-              setIsLoadingAcceptedTrip(false)
-              Alert.alert("Error de conexión", "No se pudo conectar con el servidor.")
-            }
-          },
-        },
-      ]
-    )
-  }
-
-  const llamarConductora = (telefono: string) => {
-    if (telefono && telefono !== "N/A") {
-      Linking.openURL(`tel:${telefono.replace(/\s/g, "")}`)
-    } else {
-      Alert.alert("Error", "Número de teléfono no disponible")
-    }
-  }
-
-  const consultarContraoferta = async () => {
+  // ─────────────────────────────────────────────
+  // POLLING — ENTREGAS
+  // ─────────────────────────────────────────────
+  const consultarContraofertaEntrega = async () => {
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta", {
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta_entrega", {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       })
       const data = await response.json()
       if (response.ok && data.success && data.data) {
-        setContraofertaData(data.data)
-        setShowContraoferta(true)
+        setContraofertaEntregaData(data.data)
+        setShowContraofertaEntrega(true)
       } else {
-        setContraofertaData(null)
-        setShowContraoferta(false)
+        setContraofertaEntregaData(null)
+        setShowContraofertaEntrega(false)
       }
-    } catch (error) {
-      console.error("❌ Error al consultar contraoferta:", error)
-      setContraofertaData(null)
-      setShowContraoferta(false)
+    } catch {
+      setContraofertaEntregaData(null)
+      setShowContraofertaEntrega(false)
     }
   }
 
+  const consultarEntregaAceptada = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token")
+      if (!token) return
+
+      const result = await fetchWithErrorHandling(
+        "https://www.pinkdrivers.com/api-rest/index.php?action=ver_entrega_aceptada",
+        { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+      )
+      if (!result.success || !result.data) return
+
+      const data = result.data
+
+      if (data.entrega_finalizada) {
+        const nombre = data.entrega_finalizada.domiciliario_nombre?.split(" ")[0] || "El domiciliario"
+        if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+        Alert.alert(
+          "¡Entrega finalizada! 📦",
+          `Tu entrega con ${nombre} fue completada.\n\nTotal: $${Number(data.entrega_finalizada.precio_ofrecido).toLocaleString("es-CO", { minimumFractionDigits: 0 })}\n\n¡Gracias por usar PinkEntregas!`,
+          [{
+            text: "OK", onPress: () => {
+              setAcceptedEntrega(null)
+              setIsWaitingForDelivery(false)
+              setEntregaResumen(null)
+            }
+          }]
+        )
+        return
+      }
+
+      if (data.entrega_cancelada) {
+        const nombre = data.entrega_cancelada.domiciliario_nombre?.split(" ")[0] || "El domiciliario"
+        if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+        Alert.alert(
+          "Entrega cancelada",
+          `${nombre} canceló la entrega. Puedes solicitar una nueva.`,
+          [{
+            text: "OK", onPress: () => {
+              setAcceptedEntrega(null)
+              setIsWaitingForDelivery(false)
+              setEntregaResumen(null)
+            }
+          }]
+        )
+        return
+      }
+
+      if (data.entrega_aceptada) {
+        setAcceptedEntrega(data.entrega_aceptada)
+        setIsWaitingForDelivery(false)
+        setShowContraofertaEntrega(false)
+        setContraofertaEntregaData(null)
+        setIsModalVisible(false)
+        return
+      }
+
+      if (!data.entrega_aceptada && !data.entrega_finalizada && !data.entrega_cancelada) {
+        setAcceptedEntrega(null)
+      }
+    } catch (error) {
+      console.error("❌ Error al consultar entrega aceptada:", error)
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // ACCIONES — VIAJES
+  // ─────────────────────────────────────────────
   const aceptarContraoferta = async () => {
     if (!contraofertaData) return
     setIsProcessingResponse(true)
@@ -598,35 +551,28 @@ const HomeP = () => {
       const token = await AsyncStorage.getItem("token")
       const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_contraoferta", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ viaje_id: contraofertaData.viaje_id, aceptado: true }),
       })
       const data = await response.json()
       if (response.ok && data.success) {
         Alert.alert(
           "¡Contraoferta aceptada!",
-          `Has aceptado la propuesta de ${contraofertaData.conductora_nombre} por $${Number(contraofertaData.valorPersonalizado).toLocaleString("es-CO", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-          })}`,
+          `Has aceptado la propuesta de ${contraofertaData.conductora_nombre} por $${Number(contraofertaData.valorPersonalizado).toLocaleString("es-CO", { minimumFractionDigits: 0 })}`,
           [{
-            text: "OK",
-            onPress: () => {
+            text: "OK", onPress: () => {
               setShowContraoferta(false)
               setContraofertaData(null)
               setIsWaitingForDriver(false)
               closeModal()
               setTimeout(() => { consultarViajeAceptado() }, 1000)
-            },
-          }],
+            }
+          }]
         )
       } else {
         Alert.alert("Error", data.message || "No se pudo aceptar la contraoferta")
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "No se pudo procesar la respuesta")
     } finally {
       setIsProcessingResponse(false)
@@ -640,10 +586,7 @@ const HomeP = () => {
       const token = await AsyncStorage.getItem("token")
       const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=rechazar_contraoferta", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ viaje_id: contraofertaData.viaje_id, aceptado: false }),
       })
       const data = await response.json()
@@ -651,147 +594,83 @@ const HomeP = () => {
         Alert.alert(
           "Contraoferta rechazada",
           "Has rechazado la propuesta. Seguiremos buscando otras conductoras disponibles.",
-          [{ text: "OK", onPress: () => { setShowContraoferta(false); setContraofertaData(null) } }],
+          [{ text: "OK", onPress: () => { setShowContraoferta(false); setContraofertaData(null) } }]
         )
       } else {
         Alert.alert("Error", data.message || "No se pudo rechazar la contraoferta")
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "No se pudo procesar la respuesta")
     } finally {
       setIsProcessingResponse(false)
     }
   }
 
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", (event) => {
-      setKeyboardHeight(event.endCoordinates.height)
-      setIsKeyboardVisible(true)
-    })
-    const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
-      setIsKeyboardVisible(false)
-      setActiveField(null)
-      setKeyboardHeight(0)
-    })
-    return () => {
-      keyboardDidShowListener?.remove()
-      keyboardDidHideListener?.remove()
-    }
-  }, [])
-
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (isModalVisible) {
-        closeModal()
-        return true
+  const cancelarBusqueda = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token")
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        Alert.alert("Búsqueda cancelada", "Tu búsqueda fue cancelada exitosamente.")
+        setIsWaitingForDriver(false)
+        setAcceptedTrip(null)
+        setShowContraoferta(false)
+        setContraofertaData(null)
+        await limpiarFormulario()
+      } else {
+        Alert.alert("Error", data.error || "No se pudo cancelar la búsqueda.")
       }
-      return false
-    })
-    return () => backHandler.remove()
-  }, [isModalVisible])
-
-  useEffect(() => {
-    Animated.timing(menuAnimation, {
-      toValue: menuVisible ? 1 : 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start()
-  }, [menuVisible])
-
-  useEffect(() => {
-    if (isModalVisible) {
-      Animated.parallel([
-        Animated.timing(overlayAnimation, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(modalAnimation, { toValue: 0, duration: 400, useNativeDriver: true }),
-      ]).start()
-    } else {
-      Animated.parallel([
-        Animated.timing(overlayAnimation, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(modalAnimation, { toValue: screenHeight, duration: 300, useNativeDriver: true }),
-      ]).start()
+    } catch {
+      Alert.alert("Error", "Ocurrió un error al cancelar la búsqueda.")
     }
-  }, [isModalVisible])
+  }
 
-  useEffect(() => {
-    const obtenerUsuario = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token")
-        if (!token) {
-          router.push("/passenger/LoginP")
-          return
-        }
-        const decodedToken = decodeJWT(token)
-        if (decodedToken && decodedToken.id) {
-          setUsuarioId(decodedToken.id)
-          setUsuarioData(decodedToken)
-          return
-        }
-        const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        })
-        if (response.ok) {
-          const data = await response.json()
-          if (data && data.id) {
-            setUsuarioId(data.id)
-            setUsuarioData(data)
-          }
-        } else {
-          if (response.status === 401) {
-            await AsyncStorage.removeItem("token")
-            router.push("/passenger/LoginP")
+  const cancelarViajeAceptado = async () => {
+    if (!acceptedTrip) return
+    Alert.alert("Cancelar viaje", "¿Estás segura de que quieres cancelar este viaje?", [
+      { text: "No", style: "cancel" },
+      {
+        text: "Sí, cancelar", style: "destructive", onPress: async () => {
+          try {
+            setIsLoadingAcceptedTrip(true)
+            const token = await AsyncStorage.getItem("token")
+            const result = await fetchWithErrorHandling(
+              "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje",
+              {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ viaje_id: acceptedTrip.id }),
+              }
+            )
+            if (result.success && result.data.success) {
+              stopPolling()
+              setAcceptedTrip(null)
+              setIsLoadingAcceptedTrip(false)
+              Alert.alert("Viaje cancelado", "El viaje ha sido cancelado exitosamente", [{
+                text: "OK", onPress: async () => {
+                  setIsWaitingForDriver(false)
+                  setShowContraoferta(false)
+                  setContraofertaData(null)
+                  lastViajeIdRef.current = null
+                  await limpiarFormularioCompleto()
+                }
+              }])
+            } else {
+              setIsLoadingAcceptedTrip(false)
+              Alert.alert("Error", result.data?.error || result.error || "No se pudo cancelar el viaje.")
+            }
+          } catch {
+            setIsLoadingAcceptedTrip(false)
+            Alert.alert("Error de conexión", "No se pudo conectar con el servidor.")
           }
         }
-      } catch (error) {
-        console.error("Error al obtener el usuario:", error)
       }
-    }
-    obtenerUsuario()
-  }, [])
-
-  const toggleMenu = () => setMenuVisible(!menuVisible)
-  const closeMenu = () => setMenuVisible(false)
-  const navigateTo = (screen: any) => { closeMenu(); router.push(screen) }
-  const openModal = () => {
-    setIsModalVisible(true)
-    setTimeout(() => { ubicacionActualRef.current?.focus() }, 500)
-  }
-
-  // ✅ CORRECCIÓN 2: closeModal ya NO resetea isWaitingForDelivery
-  const closeModal = () => {
-    setIsModalVisible(false)
-    setActiveField(null)
-    setIsWaitingForDriver(false)
-    setIsSubmittingRequest(false)
-    setShowContraoferta(false)
-    setContraofertaData(null)
-    // ❌ ELIMINADO: setIsWaitingForDelivery(false) — ya no va aquí
-    if (isKeyboardVisible) {
-      Keyboard.dismiss()
-    }
-  }
-
-  const selectVehicle = (vehicleType: React.SetStateAction<string>) => setSelectedVehicle(vehicleType)
-
-  const isFormComplete = () => {
-    return (
-      ubicacionActual && barrioActual && zonaActual && ciudadActual &&
-      destinoDireccion && destinoBarrio && destinoZona &&
-      puntoReferencia && selectedVehicle && valorPersonalizado && usuarioId
-    )
-  }
-
-  const limpiarFormulario = async () => {
-    setDestinoDireccion("")
-    setDestinoBarrio("")
-    setDestinoZona("")
-    setPuntoReferencia("")
-    setValorPersonalizado("")
-    setSelectedVehicle("")
-    await obtenerUbicacionActual()
+    ])
   }
 
   const handleConfirmarViaje = async () => {
@@ -806,7 +685,6 @@ const HomeP = () => {
     }
     setIsSubmittingRequest(true)
     try {
-      const baseUrl = "https://www.pinkdrivers.com/api-rest/index.php?action=viajes"
       const viajeData = {
         ubicacionActual, barrioActual, zonaActual, ciudadActual,
         destinoDireccion, destinoBarrio, destinoZona, puntoReferencia,
@@ -814,12 +692,9 @@ const HomeP = () => {
         valorPersonalizado: Number.parseFloat(valorPersonalizado),
         usuario_id: usuarioId,
       }
-      const res = await fetch(baseUrl, {
+      const res = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viajes", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await AsyncStorage.getItem("token")}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await AsyncStorage.getItem("token")}` },
         body: JSON.stringify(viajeData),
       })
       const json = await res.json()
@@ -830,13 +705,79 @@ const HomeP = () => {
         setIsSubmittingRequest(false)
         Alert.alert("Error", json.error || "Hubo un problema al solicitar el viaje.")
       }
-    } catch (error) {
+    } catch {
       setIsSubmittingRequest(false)
       Alert.alert("Error de conexión", "No se pudo enviar el viaje. Verifica tu conexión.")
     }
   }
 
-  // ✅ CORRECCIÓN 3: handleConfirmarEntrega corregido
+  // ─────────────────────────────────────────────
+  // ACCIONES — ENTREGAS
+  // ─────────────────────────────────────────────
+  const aceptarContraofertaEntrega = async () => {
+    if (!contraofertaEntregaData) return
+    setIsProcessingEntregaResponse(true)
+    try {
+      const token = await AsyncStorage.getItem("token")
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_contraoferta_entrega", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ entrega_id: contraofertaEntregaData.entrega_id }),
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        // Detener polling anterior y mostrar confirmación
+        if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+        Alert.alert(
+          "¡Contraoferta aceptada!",
+          `${contraofertaEntregaData.domiciliario_nombre.split(" ")[0]} llevará tu pedido por $${Number(contraofertaEntregaData.valorPersonalizado).toLocaleString("es-CO", { minimumFractionDigits: 0 })}`,
+          [{
+            text: "OK", onPress: () => {
+              setShowContraofertaEntrega(false)
+              setContraofertaEntregaData(null)
+              // NO cerramos modal ni apagamos isWaitingForDelivery aquí
+              // consultarEntregaAceptada detectará el estado y mostrará la pantalla
+              setTimeout(() => { consultarEntregaAceptada() }, 800)
+            }
+          }]
+        )
+      } else {
+        Alert.alert("Error", data.error || "No se pudo aceptar la contraoferta")
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo procesar la respuesta")
+    } finally {
+      setIsProcessingEntregaResponse(false)
+    }
+  }
+
+  const rechazarContraofertaEntrega = async () => {
+    if (!contraofertaEntregaData) return
+    setIsProcessingEntregaResponse(true)
+    try {
+      const token = await AsyncStorage.getItem("token")
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=rechazar_contraoferta_entrega", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ entrega_id: contraofertaEntregaData.entrega_id }),
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        Alert.alert(
+          "Contraoferta rechazada",
+          "Seguiremos buscando otro domiciliario disponible.",
+          [{ text: "OK", onPress: () => { setShowContraofertaEntrega(false); setContraofertaEntregaData(null) } }]
+        )
+      } else {
+        Alert.alert("Error", data.error || "No se pudo rechazar la contraoferta")
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo procesar la respuesta")
+    } finally {
+      setIsProcessingEntregaResponse(false)
+    }
+  }
+
   const handleConfirmarEntrega = async () => {
     if (!usuarioId) {
       Alert.alert("Error de sesión", "Por favor inicia sesión nuevamente.")
@@ -845,7 +786,6 @@ const HomeP = () => {
     setIsSubmittingRequest(true)
     try {
       const token = await AsyncStorage.getItem("token")
-
       const bodyData = {
         usuario_id: usuarioId,
         nombre_envia: senderName,
@@ -859,82 +799,91 @@ const HomeP = () => {
         direccion_entrega: deliveryAddress,
         barrio_entrega: deliveryBarrio,
         zona_entrega: deliveryZona,
-        ciudad_entrega: deliveryCiudad,   // ✅ campo que faltaba
+        ciudad_entrega: deliveryCiudad,
         es_fragil: isFragile ? 1 : 0,
         notas_adicionales: deliveryNotes,
         vehiculo_requerido: deliveryVehicle,
         precio_ofrecido: parseFloat(deliveryPrice),
       }
 
-      console.log("📤 Enviando entrega:", JSON.stringify(bodyData, null, 2))
+      const res = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=post_entrega", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(bodyData),
+      })
 
-      const res = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=post_entrega",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(bodyData),
-        }
-      )
-
-      console.log("📥 Status HTTP:", res.status)
       const responseText = await res.text()
-      console.log("📥 Respuesta cruda:", responseText)
-
       let json: any = {}
-      try {
-        json = JSON.parse(responseText)
-      } catch (e) {
-        console.error("❌ Error al parsear respuesta:", e)
+      try { json = JSON.parse(responseText) } catch {
         setIsSubmittingRequest(false)
         Alert.alert("Error del servidor", "Respuesta inesperada del servidor. Intenta de nuevo.")
         return
       }
 
-      if (res.ok && (json.success !== false)) {
-        // ✅ Guardar resumen ANTES de limpiar los campos
+      if (res.ok && json.success !== false) {
         setEntregaResumen({
           recogida: pickupAddress,
           entrega: deliveryAddress,
           precio: deliveryPrice,
           vehiculo: deliveryVehicle,
         })
-
-        // ✅ Limpiar campos del formulario
-        setSenderName("")
-        setSenderPhone("")
-        setReceiverName("")
-        setReceiverPhone("")
-        setDeliveryAddress("")
-        setDeliveryBarrio("")
-        setDeliveryZona("")
-        setIsFragile(null)
-        setDeliveryNotes("")
-        setDeliveryPrice("")
-        setDeliveryVehicle("")
-
+        // Limpiar formulario
+        setSenderName(""); setSenderPhone(""); setReceiverName(""); setReceiverPhone("")
+        setDeliveryAddress(""); setDeliveryBarrio(""); setDeliveryZona("")
+        setIsFragile(null); setDeliveryNotes(""); setDeliveryPrice(""); setDeliveryVehicle("")
         setIsSubmittingRequest(false)
-
-        // ✅ CORRECCIÓN CLAVE: Activar pantalla de espera DESPUÉS de todo lo demás
-        // Esto garantiza que el modal permanece abierto y muestra la pantalla de espera
         setIsWaitingForDelivery(true)
-
       } else {
         setIsSubmittingRequest(false)
         Alert.alert("Error", json.error || "No se pudo registrar la entrega.")
       }
-    } catch (error) {
+    } catch {
       setIsSubmittingRequest(false)
       Alert.alert("Error de conexión", "Verifica tu conexión a internet.")
     }
   }
 
-  const getUbicacionActualText = () => {
-    const partes = [ubicacionActual, barrioActual, zonaActual, ciudadActual].filter(Boolean)
-    return partes.length > 0 ? `${partes.join(" ")}` : "Obteniendo ubicación..."
+  const cancelarEntrega = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token")
+      await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      })
+    } catch (e) {
+      console.error("Error al cancelar entrega:", e)
+    }
+    setIsWaitingForDelivery(false)
+    setEntregaResumen(null)
+    setIsModalVisible(false)
+  }
+
+  // ─────────────────────────────────────────────
+  // HELPERS UI
+  // ─────────────────────────────────────────────
+  const llamarConductora = (telefono: string) => {
+    if (telefono && telefono !== "N/A") {
+      Linking.openURL(`tel:${telefono.replace(/\s/g, "")}`)
+    } else {
+      Alert.alert("Error", "Número de teléfono no disponible")
+    }
+  }
+
+  const isFormComplete = () => {
+    return !!(ubicacionActual && barrioActual && zonaActual && ciudadActual &&
+      destinoDireccion && destinoBarrio && destinoZona &&
+      puntoReferencia && selectedVehicle && valorPersonalizado && usuarioId)
+  }
+
+  const selectVehicle = (vehicleType: React.SetStateAction<string>) => setSelectedVehicle(vehicleType)
+  const toggleMenu = () => setMenuVisible(!menuVisible)
+  const closeMenu = () => setMenuVisible(false)
+  const navigateTo = (screen: any) => { closeMenu(); router.push(screen) }
+
+  const openModal = () => {
+    setIsModalVisible(true)
+    setTimeout(() => { ubicacionActualRef.current?.focus() }, 500)
   }
 
   const openModalFromCurrentLocation = () => {
@@ -942,31 +891,179 @@ const HomeP = () => {
     setTimeout(() => { ubicacionActualRef.current?.focus() }, 500)
   }
 
-  const cancelarBusqueda = async () => {
-    try {
-      const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({})
-      })
-      const data = await response.json()
-      if (response.ok && data.success) {
-        Alert.alert("Búsqueda cancelada", "Tu búsqueda fue cancelada exitosamente.")
-        setIsWaitingForDriver(false)
-        setAcceptedTrip(null)
-        setShowContraoferta(false)
-        setContraofertaData(null)
-        await limpiarFormulario()
-      } else {
-        Alert.alert("Error", data.error || "No se pudo cancelar la búsqueda.")
+  const closeModal = () => {
+    setIsModalVisible(false)
+    setActiveField(null)
+    setIsWaitingForDriver(false)
+    setIsSubmittingRequest(false)
+    setShowContraoferta(false)
+    setContraofertaData(null)
+    if (isKeyboardVisible) Keyboard.dismiss()
+  }
+
+  // ─────────────────────────────────────────────
+  // USE EFFECTS
+  // ─────────────────────────────────────────────
+
+  // Ubicación inicial
+  useEffect(() => {
+    const configurarUbicacionInicial = async () => {
+      await obtenerUbicacionActual()
+      try {
+        await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, timeInterval: 30000, distanceInterval: 100 },
+          async (newLocation) => {
+            const { latitude: newLat, longitude: newLng } = newLocation.coords
+            setCurrentLocation(prev => {
+              if (!prev) return { latitude: newLat, longitude: newLng }
+              const latDiff = Math.abs(prev.latitude - newLat)
+              const lngDiff = Math.abs(prev.longitude - newLng)
+              return (latDiff > 0.001 || lngDiff > 0.001) ? { latitude: newLat, longitude: newLng } : prev
+            })
+            if (!ubicacionActual || ubicacionActual === "Obteniendo ubicación..." ||
+              ubicacionActual === "Ubicación no encontrada" || ubicacionActual === "Error al obtener ubicación") {
+              await obtenerDireccion(newLat, newLng)
+            }
+          }
+        )
+      } catch (error) {
+        console.error("❌ Error configurando watcher:", error)
       }
-    } catch (error) {
-      Alert.alert("Error", "Ocurrió un error al cancelar la búsqueda.")
     }
+    configurarUbicacionInicial()
+  }, [])
+
+  // Polling viajes
+  useEffect(() => {
+    if (acceptedTrip) {
+      startPolling(() => { consultarViajeAceptado() }, 5000)
+    } else if (isWaitingForDriver && !showContraoferta) {
+      startPolling(() => {
+        consultarContraoferta()
+        consultarViajeAceptado()
+      }, 7000)
+    } else {
+      stopPolling()
+    }
+    return () => { stopPolling() }
+  }, [isWaitingForDriver, showContraoferta, acceptedTrip?.id])
+
+  // Polling entregas — UN SOLO useEffect que maneja todos los casos
+  useEffect(() => {
+    if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+
+    if (acceptedEntrega) {
+      // Entrega activa: solo verificar finalización/cancelación
+      entregaPollingRef.current = setInterval(() => {
+        consultarEntregaAceptada()
+      }, 5000)
+    } else if (isWaitingForDelivery && !showContraofertaEntrega) {
+      // Esperando: buscar contraoferta Y entrega aceptada (por si aceptó directamente)
+      entregaPollingRef.current = setInterval(() => {
+        consultarContraofertaEntrega()
+        consultarEntregaAceptada()
+      }, 5000)
+    }
+
+    return () => {
+      if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+    }
+  }, [isWaitingForDelivery, showContraofertaEntrega, acceptedEntrega?.id])
+
+  // Teclado
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates.height)
+      setIsKeyboardVisible(true)
+    })
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      setIsKeyboardVisible(false)
+      setActiveField(null)
+      setKeyboardHeight(0)
+    })
+    return () => { show.remove(); hide.remove() }
+  }, [])
+
+  // Botón atrás
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (isModalVisible) { closeModal(); return true }
+      return false
+    })
+    return () => backHandler.remove()
+  }, [isModalVisible])
+
+  // Animación menú
+  useEffect(() => {
+    Animated.timing(menuAnimation, { toValue: menuVisible ? 1 : 0, duration: 250, useNativeDriver: true }).start()
+  }, [menuVisible])
+
+  // Animación modal
+  useEffect(() => {
+    if (isModalVisible) {
+      Animated.parallel([
+        Animated.timing(overlayAnimation, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(modalAnimation, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(overlayAnimation, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(modalAnimation, { toValue: screenHeight, duration: 300, useNativeDriver: true }),
+      ]).start()
+    }
+  }, [isModalVisible])
+
+  // Usuario
+  useEffect(() => {
+    const obtenerUsuario = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token")
+        if (!token) { router.push("/passenger/LoginP"); return }
+        const decodedToken = decodeJWT(token)
+        if (decodedToken?.id) { setUsuarioId(decodedToken.id); setUsuarioData(decodedToken); return }
+        const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        })
+        if (response.ok) {
+          const data = await response.json()
+          if (data?.id) { setUsuarioId(data.id); setUsuarioData(data) }
+        } else if (response.status === 401) {
+          await AsyncStorage.removeItem("token")
+          router.push("/passenger/LoginP")
+        }
+      } catch (error) {
+        console.error("Error al obtener el usuario:", error)
+      }
+    }
+    obtenerUsuario()
+  }, [])
+
+  // ─────────────────────────────────────────────
+  // RENDER HELPERS
+  // ─────────────────────────────────────────────
+  const renderMap = () => {
+    if (locationLoading) {
+      return (
+        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color="#FF69B4" />
+          <Text style={{ color: "#fff", marginTop: 10, fontSize: 16 }}>Cargando ubicación...</Text>
+        </View>
+      )
+    }
+    return (
+      <View style={styles.map}>
+        <Image source={require('../../assets/images/fondoN.jpg')} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+        <View style={{ position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: 'rgba(255,255,255,0.9)', padding: 15, borderRadius: 10, alignItems: 'center' }}>
+          <FontAwesome name="map-marker" size={24} color="#FF69B4" />
+          <Text style={{ color: "#333", fontSize: 14, marginTop: 5, textAlign: 'center' }}>
+            {currentLocation
+              ? `Ubicación: ${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`
+              : "Obteniendo ubicación..."}
+          </Text>
+        </View>
+      </View>
+    )
   }
 
   const renderAcceptedTripDetail = () => {
@@ -1042,7 +1139,7 @@ const HomeP = () => {
             </View>
           </View>
         </View>
-        <View style={[styles.tripPriceDetailCard]}>
+        <View style={styles.tripPriceDetailCard}>
           <Text style={styles.tripPriceDetailAmount}>
             ${acceptedTrip.valorPersonalizado.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </Text>
@@ -1057,37 +1154,79 @@ const HomeP = () => {
     )
   }
 
-  const renderMap = () => {
-    if (locationLoading) {
-      return (
-        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color="#FF69B4" />
-          <Text style={{ color: "#fff", marginTop: 10, fontSize: 16 }}>Cargando ubicación...</Text>
-        </View>
-      )
-    }
+  const renderAcceptedEntregaDetail = () => {
+    if (!acceptedEntrega) return null
+    const firstName = acceptedEntrega.domiciliario_nombre?.split(" ")[0] || "Domiciliario"
     return (
-      <View style={styles.map}>
-        <Image
-          source={require('../../assets/images/fondoN.jpg')}
-          style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
-        />
-        <View style={{
-          position: 'absolute', bottom: 20, left: 20, right: 20,
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          padding: 15, borderRadius: 10, alignItems: 'center'
-        }}>
-          <FontAwesome name="map-marker" size={24} color="#FF69B4" />
-          <Text style={{ color: "#333", fontSize: 14, marginTop: 5, textAlign: 'center' }}>
-            {currentLocation
-              ? `Ubicación: ${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`
-              : "Obteniendo ubicación..."}
+      <View style={styles.acceptedTripContainer}>
+        <View style={styles.acceptedTripHeader}>
+          <Text style={styles.acceptedTripTitle}>¡Tu pedido fue aceptado! 📦</Text>
+          <View style={[styles.tripStatusBadge, { backgroundColor: '#5A189A' }]}>
+            <Text style={styles.tripStatusText}>✓ CONFIRMADO</Text>
+          </View>
+        </View>
+        <View style={styles.driverDetailCard}>
+          <View style={styles.driverHeaderInfo}>
+            <View style={styles.driverAvatarContainer}>
+              <View style={[styles.driverAvatar, { backgroundColor: '#5A189A' }]}>
+                <FontAwesome5 name="user" size={35} color="#fff" />
+              </View>
+            </View>
+            <View style={styles.driverMainInfo}>
+              <Text style={styles.driverNameLarge}>{firstName}</Text>
+            </View>
+          </View>
+          <View style={styles.vehicleInfoSection}>
+            <View style={styles.vehicleInfoHeader}>
+              <FontAwesome5 name="bicycle" size={18} color="#5A189A" />
+              <Text style={[styles.vehicleInfoTitle, { color: '#5A189A' }]}>Vehículo de entrega</Text>
+            </View>
+            <View style={styles.vehicleDetailsRow}>
+              <View style={styles.vehicleDetailItem}>
+                <Text style={styles.vehicleDetailLabel}>Tipo</Text>
+                <Text style={styles.vehicleDetailValue}>{acceptedEntrega.vehiculo_tipo}</Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.callDriverButton, { backgroundColor: '#5A189A' }]}
+            onPress={() => llamarConductora(acceptedEntrega.domiciliario_telefono)}
+          >
+            <FontAwesome name="phone" size={18} color="#fff" />
+            <Text style={styles.callDriverButtonText}>Llamar al domiciliario</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.tripRouteDetailCard}>
+          <View style={styles.tripRoutePoint}>
+            <View style={[styles.tripRoutePointDot, { backgroundColor: '#5A189A' }]} />
+            <View style={styles.tripRoutePointInfo}>
+              <Text style={styles.tripRoutePointLabel}>RECOGIDA</Text>
+              <Text style={styles.tripRoutePointAddress}>{acceptedEntrega.direccion_recogida}</Text>
+              <Text style={styles.tripRoutePointNeighborhood}>{acceptedEntrega.barrio_recogida}</Text>
+            </View>
+          </View>
+          <View style={styles.tripRouteLine} />
+          <View style={styles.tripRoutePoint}>
+            <View style={[styles.tripRoutePointDot, styles.tripDestinationDot]} />
+            <View style={styles.tripRoutePointInfo}>
+              <Text style={styles.tripRoutePointLabel}>ENTREGA</Text>
+              <Text style={styles.tripRoutePointAddress}>{acceptedEntrega.direccion_entrega}</Text>
+              <Text style={styles.tripRoutePointNeighborhood}>{acceptedEntrega.barrio_entrega}</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.tripPriceDetailCard}>
+          <Text style={styles.tripPriceDetailAmount}>
+            ${Number(acceptedEntrega.precio_ofrecido).toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </Text>
         </View>
       </View>
     )
   }
 
+  // ─────────────────────────────────────────────
+  // GUARDS DE RENDERIZADO
+  // ─────────────────────────────────────────────
   if (!usuarioId) {
     return (
       <LinearGradient colors={["#CF5BA9", "#B33F8D"]} style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
@@ -1097,6 +1236,7 @@ const HomeP = () => {
     )
   }
 
+  // Pantalla viaje aceptado
   if (acceptedTrip) {
     return (
       <LinearGradient colors={["#D404C2", "#D404C2"]} style={styles.container}>
@@ -1114,6 +1254,27 @@ const HomeP = () => {
     )
   }
 
+  // Pantalla entrega aceptada
+  if (acceptedEntrega) {
+    return (
+      <LinearGradient colors={["#5A189A", "#5A189A"]} style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#5A189A" />
+        <View style={[styles.mapContainer, { height: screenHeight * 0.4 }]}>{renderMap()}</View>
+        <View style={styles.avatarMenuContainer}>
+          <TouchableOpacity onPress={() => navigateTo("/passenger/ProfileP")} style={styles.avatarButtonContainer} activeOpacity={0.8}>
+            <Ionicons name="person-circle-outline" size={45} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.footer, { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, flex: 1 }]}>
+          <ScrollView showsVerticalScrollIndicator={false}>{renderAcceptedEntregaDetail()}</ScrollView>
+        </View>
+      </LinearGradient>
+    )
+  }
+
+  // ─────────────────────────────────────────────
+  // PANTALLA PRINCIPAL
+  // ─────────────────────────────────────────────
   return (
     <LinearGradient colors={["#D404C2", "#D404C2"]} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#D404C2" />
@@ -1151,11 +1312,13 @@ const HomeP = () => {
         </TouchableOpacity>
       </View>
 
+      {/* ── MODAL ── */}
       {isModalVisible && (
         <>
           <Animated.View style={[styles.modalOverlay, { opacity: overlayAnimation }]} />
           <Animated.View style={[styles.modalContainer, { transform: [{ translateY: modalAnimation }] }]}>
 
+            {/* ── VIAJES: Contraoferta ── */}
             {isWaitingForDriver && showContraoferta && contraofertaData ? (
               <View style={styles.waitingContainer}>
                 <View style={styles.waitingHeader}>
@@ -1172,7 +1335,7 @@ const HomeP = () => {
                     <Text style={styles.contraofertaPlate}>Color: {contraofertaData.vehiculo_color}</Text>
                     <Text style={styles.contraofertaMessage}>Te propuso un precio de:</Text>
                     <Text style={styles.contraofertaPrice}>
-                      ${Number(contraofertaData.valorPersonalizado).toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      ${Number(contraofertaData.valorPersonalizado).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
                     </Text>
                     <View style={styles.contraofertaButtons}>
                       <TouchableOpacity style={[styles.contraofertaButton, styles.rejectButton]} onPress={rechazarContraoferta} disabled={isProcessingResponse}>
@@ -1191,6 +1354,7 @@ const HomeP = () => {
               </View>
 
             ) : isWaitingForDriver ? (
+              /* ── VIAJES: Buscando conductora ── */
               <View style={styles.waitingContainer}>
                 <View style={styles.waitingHeader}>
                   <Text style={styles.waitingTitle}>Buscando conductora</Text>
@@ -1208,28 +1372,67 @@ const HomeP = () => {
                 </View>
               </View>
 
+            ) : isWaitingForDelivery && showContraofertaEntrega && contraofertaEntregaData ? (
+              /* ── ENTREGAS: Contraoferta ── */
+              <View style={styles.waitingContainer}>
+                <View style={[styles.waitingHeader, { backgroundColor: '#5A189A' }]}>
+                  <Text style={styles.waitingTitle}>¡Nueva propuesta! 📦</Text>
+                  <TouchableOpacity style={styles.cancelButton} onPress={() => {
+                    setShowContraofertaEntrega(false)
+                    setContraofertaEntregaData(null)
+                  }}>
+                    <FontAwesome name="times" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.waitingContent}>
+                  <View style={styles.contraofertaCard}>
+                    <FontAwesome5 name="user-circle" size={60} color="#5A189A" style={{ marginBottom: 20 }} />
+                    <Text style={styles.contraofertaDriverName}>
+                      {contraofertaEntregaData.domiciliario_nombre.split(" ")[0]}
+                    </Text>
+                    <Text style={styles.contraofertaPlate}>🚲 {contraofertaEntregaData.vehiculo_tipo}</Text>
+                    <Text style={styles.contraofertaPlate}>📞 {contraofertaEntregaData.domiciliario_telefono}</Text>
+                    <Text style={styles.contraofertaMessage}>Te propuso un precio de:</Text>
+                    <Text style={[styles.contraofertaPrice, { color: '#5A189A' }]}>
+                      ${Number(contraofertaEntregaData.valorPersonalizado).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                    </Text>
+                    {contraofertaEntregaData.precio_original && (
+                      <Text style={{ color: '#999', fontSize: 13, marginBottom: 10 }}>
+                        Precio original: ${Number(contraofertaEntregaData.precio_original).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                      </Text>
+                    )}
+                    <View style={styles.contraofertaButtons}>
+                      <TouchableOpacity
+                        style={[styles.contraofertaButton, styles.rejectButton]}
+                        onPress={rechazarContraofertaEntrega}
+                        disabled={isProcessingEntregaResponse}
+                      >
+                        {isProcessingEntregaResponse
+                          ? <ActivityIndicator size="small" color="#666" />
+                          : <><FontAwesome name="times" size={16} color="#666" /><Text style={styles.rejectButtonText}>Rechazar</Text></>
+                        }
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.contraofertaButton, styles.acceptButton, { backgroundColor: '#5A189A' }]}
+                        onPress={aceptarContraofertaEntrega}
+                        disabled={isProcessingEntregaResponse}
+                      >
+                        {isProcessingEntregaResponse
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <><FontAwesome name="check" size={16} color="#fff" /><Text style={styles.acceptButtonText}>Aceptar</Text></>
+                        }
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
             ) : isWaitingForDelivery ? (
-              // ✅ PANTALLA DE ESPERA PINKENTREGAS
+              /* ── ENTREGAS: Esperando domiciliario ── */
               <View style={styles.waitingContainer}>
                 <View style={[styles.waitingHeader, { backgroundColor: '#5A189A' }]}>
                   <Text style={styles.waitingTitle}>Pedido enviado 📦</Text>
-                  {/* ✅ CORRECCIÓN 4: Botón X cierra sin llamar closeModal() */}
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={async () => {
-                      try {
-                        const token = await AsyncStorage.getItem("token")
-                        await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega", {
-                          method: "POST",
-                          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                          body: JSON.stringify({})
-                        })
-                      } catch (e) { console.error("Error al cancelar entrega:", e) }
-                      setIsWaitingForDelivery(false)
-                      setEntregaResumen(null)
-                      setIsModalVisible(false)
-                    }}
-                  >
+                  <TouchableOpacity style={styles.cancelButton} onPress={cancelarEntrega}>
                     <FontAwesome name="times" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
@@ -1241,33 +1444,20 @@ const HomeP = () => {
                   <Text style={[styles.waitingSubMessage, { color: '#5A189A', marginBottom: 20 }]}>
                     Te avisaremos cuando una conductora acepte tu entrega
                   </Text>
-
                   {entregaResumen && (
-                    <View style={{
-                      backgroundColor: '#F3EEF8', borderRadius: 12, padding: 16,
-                      width: '100%', marginBottom: 20,
-                      borderLeftWidth: 4, borderLeftColor: '#5A189A',
-                    }}>
+                    <View style={{ backgroundColor: '#F3EEF8', borderRadius: 12, padding: 16, width: '100%', marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#5A189A' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                         <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#5A189A', marginRight: 8 }} />
                         <Text style={{ color: '#3B0F5C', fontSize: 13, fontWeight: '600' }}>RECOGIDA</Text>
                       </View>
-                      <Text style={{ color: '#333', fontSize: 14, marginBottom: 14, paddingLeft: 18 }}>
-                        {entregaResumen.recogida}
-                      </Text>
+                      <Text style={{ color: '#333', fontSize: 14, marginBottom: 14, paddingLeft: 18 }}>{entregaResumen.recogida}</Text>
                       <View style={{ width: 1, height: 12, backgroundColor: '#5A189A', marginLeft: 4, marginBottom: 2 }} />
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                         <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#D404C2', marginRight: 8 }} />
                         <Text style={{ color: '#3B0F5C', fontSize: 13, fontWeight: '600' }}>ENTREGA</Text>
                       </View>
-                      <Text style={{ color: '#333', fontSize: 14, paddingLeft: 18 }}>
-                        {entregaResumen.entrega}
-                      </Text>
-                      <View style={{
-                        flexDirection: 'row', justifyContent: 'space-between',
-                        marginTop: 14, paddingTop: 14,
-                        borderTopWidth: 1, borderTopColor: '#D8CCE8',
-                      }}>
+                      <Text style={{ color: '#333', fontSize: 14, paddingLeft: 18 }}>{entregaResumen.entrega}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#D8CCE8' }}>
                         <Text style={{ color: '#5A189A', fontSize: 13 }}>🚲 {entregaResumen.vehiculo}</Text>
                         <Text style={{ color: '#5A189A', fontSize: 15, fontWeight: 'bold' }}>
                           ${parseFloat(entregaResumen.precio).toLocaleString('es-CO', { minimumFractionDigits: 0 })}
@@ -1275,32 +1465,14 @@ const HomeP = () => {
                       </View>
                     </View>
                   )}
-
-                  {/* ✅ CORRECCIÓN 5: Botón cancelar NO llama closeModal() */}
-                  <TouchableOpacity
-                    style={[styles.cancelSearchButton, { borderColor: '#5A189A' }]}
-                    onPress={async () => {
-                      try {
-                        const token = await AsyncStorage.getItem("token")
-                        await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega", {
-                          method: "POST",
-                          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                          body: JSON.stringify({})
-                        })
-                      } catch (e) { console.error("Error al cancelar entrega:", e) }
-                      setIsWaitingForDelivery(false)
-                      setEntregaResumen(null)
-                      setIsModalVisible(false)
-                    }}
-                  >
-                    <Text style={[styles.cancelSearchButtonText, { color: '#5A189A' }]}>
-                      Cancelar pedido
-                    </Text>
+                  <TouchableOpacity style={[styles.cancelSearchButton, { borderColor: '#5A189A' }]} onPress={cancelarEntrega}>
+                    <Text style={[styles.cancelSearchButtonText, { color: '#5A189A' }]}>Cancelar pedido</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
             ) : (
+              /* ── FORMULARIO ── */
               <>
                 <View style={dynHeader}>
                   <View style={{ width: 40 }} />
@@ -1311,6 +1483,7 @@ const HomeP = () => {
                     <FontAwesome name="chevron-up" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
+
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContent}>
                   <ScrollView
                     ref={scrollViewRef}
@@ -1320,6 +1493,7 @@ const HomeP = () => {
                     contentContainerStyle={{ paddingBottom: isKeyboardVisible ? keyboardHeight + 20 : 20 }}
                   >
                     {serviceMode === 'pinkentregas' ? (
+                      /* ── FORMULARIO PINKENTREGAS ── */
                       <>
                         <Text style={[styles.sectionTitle, { marginTop: 10, marginBottom: 10 }]}>Datos de quien envía</Text>
                         <TextInput
@@ -1363,8 +1537,8 @@ const HomeP = () => {
                           onFocus={() => setActiveField("pickupBarrio")} onBlur={() => setActiveField(null)} returnKeyType="next"
                         />
                         <View style={[styles.modalInput, styles.pickerContainer]}>
-                          <Picker selectedValue={pickupZona} onValueChange={(itemValue) => setPickupZona(itemValue)} style={styles.picker}>
-                            {zonasDisponibles.map((zona) => (<Picker.Item key={zona.value} label={zona.label} value={zona.value} />))}
+                          <Picker selectedValue={pickupZona} onValueChange={(v) => setPickupZona(v)} style={styles.picker}>
+                            {zonasDisponibles.map((z) => <Picker.Item key={z.value} label={z.label} value={z.value} />)}
                           </Picker>
                         </View>
                         <TextInput
@@ -1388,8 +1562,8 @@ const HomeP = () => {
                           onFocus={() => setActiveField("deliveryBarrio")} onBlur={() => setActiveField(null)} returnKeyType="next"
                         />
                         <View style={[styles.modalInput, styles.pickerContainer]}>
-                          <Picker selectedValue={deliveryZona} onValueChange={(itemValue) => setDeliveryZona(itemValue)} style={styles.picker}>
-                            {zonasDisponibles.map((zona) => (<Picker.Item key={zona.value} label={zona.label} value={zona.value} />))}
+                          <Picker selectedValue={deliveryZona} onValueChange={(v) => setDeliveryZona(v)} style={styles.picker}>
+                            {zonasDisponibles.map((z) => <Picker.Item key={z.value} label={z.label} value={z.value} />)}
                           </Picker>
                         </View>
 
@@ -1471,6 +1645,7 @@ const HomeP = () => {
                         </TouchableOpacity>
                       </>
                     ) : (
+                      /* ── FORMULARIO VIAJES ── */
                       <>
                         <Text style={[styles.sectionTitle, { marginTop: 10, marginBottom: 10 }]}>Ubicación actual</Text>
                         <TextInput
@@ -1490,8 +1665,8 @@ const HomeP = () => {
                           returnKeyType="next" onSubmitEditing={() => ciudadActualRef.current?.focus()}
                         />
                         <View style={[styles.modalInput, styles.pickerContainer]}>
-                          <Picker selectedValue={zonaActual} onValueChange={(itemValue) => setZonaActual(itemValue)} style={styles.picker}>
-                            {zonasDisponibles.map((zona) => (<Picker.Item key={zona.value} label={zona.label} value={zona.value} />))}
+                          <Picker selectedValue={zonaActual} onValueChange={(v) => setZonaActual(v)} style={styles.picker}>
+                            {zonasDisponibles.map((z) => <Picker.Item key={z.value} label={z.label} value={z.value} />)}
                           </Picker>
                         </View>
                         <TextInput
@@ -1521,8 +1696,8 @@ const HomeP = () => {
                           returnKeyType="next" onSubmitEditing={() => referenciaRef.current?.focus()}
                         />
                         <View style={[styles.modalInput, styles.pickerContainer]}>
-                          <Picker selectedValue={destinoZona} onValueChange={(itemValue) => setDestinoZona(itemValue)} style={styles.picker}>
-                            {zonasDisponibles.map((zona) => (<Picker.Item key={zona.value} label={zona.label} value={zona.value} />))}
+                          <Picker selectedValue={destinoZona} onValueChange={(v) => setDestinoZona(v)} style={styles.picker}>
+                            {zonasDisponibles.map((z) => <Picker.Item key={z.value} label={z.label} value={z.value} />)}
                           </Picker>
                         </View>
                         <TextInput
