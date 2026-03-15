@@ -26,7 +26,7 @@ import {
   View,
 } from "react-native"
 import styles from "../styles/HomePstyles"
-import { rf, rs, rw } from "../utils/responsive"; // ajusta la ruta según tu estructura
+import { rf, rs, rw } from "../../utils/responsive"; // ajusta la ruta según tu estructura
 
 const { height: screenHeight } = Dimensions.get("window")
 
