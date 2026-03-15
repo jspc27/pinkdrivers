@@ -26,6 +26,7 @@ import {
   View,
 } from "react-native"
 import styles from "../styles/HomePstyles"
+import { rf, rs, rw } from "../utils/responsive"; // ajusta la ruta según tu estructura
 
 const { height: screenHeight } = Dimensions.get("window")
 
@@ -216,6 +217,30 @@ const HomeP = () => {
       return { error: "Error al parsear JSON" }
     }
   }
+
+  const saveAcceptedEntrega = async (entrega: AcceptedEntregaData | null) => {
+  try {
+    if (entrega) {
+      await AsyncStorage.setItem("accepted_entrega", JSON.stringify(entrega))
+    } else {
+      await AsyncStorage.removeItem("accepted_entrega")
+    }
+  } catch (e) {
+    console.error("Error guardando entrega:", e)
+  }
+}
+
+const loadAcceptedEntrega = async () => {
+  try {
+    const stored = await AsyncStorage.getItem("accepted_entrega")
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      setAcceptedEntrega(parsed)
+    }
+  } catch (e) {
+    console.error("Error cargando entrega:", e)
+  }
+}
 
   const fetchWithErrorHandling = async (url: string, options: RequestInit = {}) => {
     try {
@@ -478,68 +503,72 @@ const HomeP = () => {
   }
 
   const consultarEntregaAceptada = async () => {
-    try {
-      const token = await AsyncStorage.getItem("token")
-      if (!token) return
+  try {
+    const token = await AsyncStorage.getItem("token")
+    if (!token) return
 
-      const result = await fetchWithErrorHandling(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=ver_entrega_aceptada",
-        { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+    const result = await fetchWithErrorHandling(
+      "https://www.pinkdrivers.com/api-rest/index.php?action=ver_entrega_aceptada",
+      { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+    )
+    if (!result.success || !result.data) return
+
+    const data = result.data
+
+    if (data.entrega_finalizada) {
+      const nombre = data.entrega_finalizada.domiciliario_nombre?.split(" ")[0] || "El domiciliario"
+      if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+      Alert.alert(
+        "¡Entrega finalizada! 📦",
+        `Tu entrega con ${nombre} fue completada.\n\nTotal: $${Number(data.entrega_finalizada.precio_ofrecido).toLocaleString("es-CO", { minimumFractionDigits: 0 })}\n\n¡Gracias por usar PinkEntregas!`,
+        [{
+          text: "OK", onPress: () => {
+            setAcceptedEntrega(null)
+            saveAcceptedEntrega(null)
+            setIsWaitingForDelivery(false)
+            setEntregaResumen(null)
+          }
+        }]
       )
-      if (!result.success || !result.data) return
-
-      const data = result.data
-
-      if (data.entrega_finalizada) {
-        const nombre = data.entrega_finalizada.domiciliario_nombre?.split(" ")[0] || "El domiciliario"
-        if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
-        Alert.alert(
-          "¡Entrega finalizada! 📦",
-          `Tu entrega con ${nombre} fue completada.\n\nTotal: $${Number(data.entrega_finalizada.precio_ofrecido).toLocaleString("es-CO", { minimumFractionDigits: 0 })}\n\n¡Gracias por usar PinkEntregas!`,
-          [{
-            text: "OK", onPress: () => {
-              setAcceptedEntrega(null)
-              setIsWaitingForDelivery(false)
-              setEntregaResumen(null)
-            }
-          }]
-        )
-        return
-      }
-
-      if (data.entrega_cancelada) {
-        const nombre = data.entrega_cancelada.domiciliario_nombre?.split(" ")[0] || "El domiciliario"
-        if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
-        Alert.alert(
-          "Entrega cancelada",
-          `${nombre} canceló la entrega. Puedes solicitar una nueva.`,
-          [{
-            text: "OK", onPress: () => {
-              setAcceptedEntrega(null)
-              setIsWaitingForDelivery(false)
-              setEntregaResumen(null)
-            }
-          }]
-        )
-        return
-      }
-
-      if (data.entrega_aceptada) {
-        setAcceptedEntrega(data.entrega_aceptada)
-        setIsWaitingForDelivery(false)
-        setShowContraofertaEntrega(false)
-        setContraofertaEntregaData(null)
-        setIsModalVisible(false)
-        return
-      }
-
-      if (!data.entrega_aceptada && !data.entrega_finalizada && !data.entrega_cancelada) {
-        setAcceptedEntrega(null)
-      }
-    } catch (error) {
-      console.error("❌ Error al consultar entrega aceptada:", error)
+      return
     }
+
+    if (data.entrega_cancelada) {
+      const nombre = data.entrega_cancelada.domiciliario_nombre?.split(" ")[0] || "El domiciliario"
+      if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+      Alert.alert(
+        "Entrega cancelada",
+        `${nombre} canceló la entrega. Puedes solicitar una nueva.`,
+        [{
+          text: "OK", onPress: () => {
+            setAcceptedEntrega(null)
+            saveAcceptedEntrega(null)
+            setIsWaitingForDelivery(false)
+            setEntregaResumen(null)
+          }
+        }]
+      )
+      return
+    }
+
+    if (data.entrega_aceptada) {
+      setAcceptedEntrega(data.entrega_aceptada)
+      saveAcceptedEntrega(data.entrega_aceptada)
+      setIsWaitingForDelivery(false)
+      setShowContraofertaEntrega(false)
+      setContraofertaEntregaData(null)
+      setIsModalVisible(false)
+      return
+    }
+
+    if (!data.entrega_aceptada && !data.entrega_finalizada && !data.entrega_cancelada) {
+      setAcceptedEntrega(null)
+      saveAcceptedEntrega(null)
+    }
+  } catch (error) {
+    console.error("❌ Error al consultar entrega aceptada:", error)
   }
+}
 
   // ─────────────────────────────────────────────
   // ACCIONES — VIAJES
@@ -859,6 +888,44 @@ const HomeP = () => {
     setIsModalVisible(false)
   }
 
+  const cancelarEntregaAceptada = async () => {
+  if (!acceptedEntrega) return
+
+  Alert.alert("Cancelar pedido", "¿Estás segura de que quieres cancelar este pedido?", [
+    { text: "No", style: "cancel" },
+    {
+      text: "Sí, cancelar",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          const token = await AsyncStorage.getItem("token")
+          const response = await fetch(
+            "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega_usuario",
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ entrega_id: acceptedEntrega.id }),
+            }
+          )
+          const data = await response.json()
+          if (response.ok && data.success) {
+            if (entregaPollingRef.current) clearInterval(entregaPollingRef.current)
+            setAcceptedEntrega(null)
+            saveAcceptedEntrega(null)
+            setIsWaitingForDelivery(false)
+            setEntregaResumen(null)
+            Alert.alert("Pedido cancelado", "Tu pedido ha sido cancelado. El domiciliario será notificado.")
+          } else {
+            Alert.alert("Error", data.error || "No se pudo cancelar el pedido.")
+          }
+        } catch {
+          Alert.alert("Error de conexión", "No se pudo conectar con el servidor.")
+        }
+      },
+    },
+  ])
+}
+
   // ─────────────────────────────────────────────
   // HELPERS UI
   // ─────────────────────────────────────────────
@@ -1015,56 +1082,47 @@ const HomeP = () => {
 
   // Usuario
   useEffect(() => {
-    const obtenerUsuario = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token")
-        if (!token) { router.push("/passenger/LoginP"); return }
-        const decodedToken = decodeJWT(token)
-        if (decodedToken?.id) { setUsuarioId(decodedToken.id); setUsuarioData(decodedToken); return }
-        const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        })
-        if (response.ok) {
-          const data = await response.json()
-          if (data?.id) { setUsuarioId(data.id); setUsuarioData(data) }
-        } else if (response.status === 401) {
-          await AsyncStorage.removeItem("token")
-          router.push("/passenger/LoginP")
-        }
-      } catch (error) {
-        console.error("Error al obtener el usuario:", error)
+  const obtenerUsuario = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token")
+      if (!token) { router.push("/passenger/LoginP"); return }
+
+      await loadAcceptedEntrega()
+
+      const decodedToken = decodeJWT(token)
+      if (decodedToken?.id) { setUsuarioId(decodedToken.id); setUsuarioData(decodedToken); return }
+
+      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data?.id) { setUsuarioId(data.id); setUsuarioData(data) }
+      } else if (response.status === 401) {
+        await AsyncStorage.removeItem("token")
+        router.push("/passenger/LoginP")
       }
+    } catch (error) {
+      console.error("Error al obtener el usuario:", error)
     }
-    obtenerUsuario()
-  }, [])
+  }
+  obtenerUsuario()
+}, [])
 
   // ─────────────────────────────────────────────
   // RENDER HELPERS
   // ─────────────────────────────────────────────
   const renderMap = () => {
-    if (locationLoading) {
-      return (
-        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color="#FF69B4" />
-          <Text style={{ color: "#fff", marginTop: 10, fontSize: 16 }}>Cargando ubicación...</Text>
-        </View>
-      )
-    }
-    return (
-      <View style={styles.map}>
-        <Image source={require('../../assets/images/fondoN.jpg')} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
-        <View style={{ position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: 'rgba(255,255,255,0.9)', padding: 15, borderRadius: 10, alignItems: 'center' }}>
-          <FontAwesome name="map-marker" size={24} color="#FF69B4" />
-          <Text style={{ color: "#333", fontSize: 14, marginTop: 5, textAlign: 'center' }}>
-            {currentLocation
-              ? `Ubicación: ${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`
-              : "Obteniendo ubicación..."}
-          </Text>
-        </View>
-      </View>
-    )
-  }
+  return (
+    <View style={styles.map}>
+      <Image
+        source={require('../../assets/images/fondoN.jpg')}
+        style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+      />
+    </View>
+  )
+}
 
   const renderAcceptedTripDetail = () => {
     if (!acceptedTrip) return null
@@ -1155,74 +1213,196 @@ const HomeP = () => {
   }
 
   const renderAcceptedEntregaDetail = () => {
-    if (!acceptedEntrega) return null
-    const firstName = acceptedEntrega.domiciliario_nombre?.split(" ")[0] || "Domiciliario"
-    return (
-      <View style={styles.acceptedTripContainer}>
-        <View style={styles.acceptedTripHeader}>
-          <Text style={styles.acceptedTripTitle}>¡Tu pedido fue aceptado! 📦</Text>
-          <View style={[styles.tripStatusBadge, { backgroundColor: '#5A189A' }]}>
-            <Text style={styles.tripStatusText}>✓ CONFIRMADO</Text>
-          </View>
-        </View>
-        <View style={styles.driverDetailCard}>
-          <View style={styles.driverHeaderInfo}>
-            <View style={styles.driverAvatarContainer}>
-              <View style={[styles.driverAvatar, { backgroundColor: '#5A189A' }]}>
-                <FontAwesome5 name="user" size={35} color="#fff" />
-              </View>
-            </View>
-            <View style={styles.driverMainInfo}>
-              <Text style={styles.driverNameLarge}>{firstName}</Text>
-            </View>
-          </View>
-          <View style={styles.vehicleInfoSection}>
-            <View style={styles.vehicleInfoHeader}>
-              <FontAwesome5 name="bicycle" size={18} color="#5A189A" />
-              <Text style={[styles.vehicleInfoTitle, { color: '#5A189A' }]}>Vehículo de entrega</Text>
-            </View>
-            <View style={styles.vehicleDetailsRow}>
-              <View style={styles.vehicleDetailItem}>
-                <Text style={styles.vehicleDetailLabel}>Tipo</Text>
-                <Text style={styles.vehicleDetailValue}>{acceptedEntrega.vehiculo_tipo}</Text>
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[styles.callDriverButton, { backgroundColor: '#5A189A' }]}
-            onPress={() => llamarConductora(acceptedEntrega.domiciliario_telefono)}
-          >
-            <FontAwesome name="phone" size={18} color="#fff" />
-            <Text style={styles.callDriverButtonText}>Llamar al domiciliario</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.tripRouteDetailCard}>
-          <View style={styles.tripRoutePoint}>
-            <View style={[styles.tripRoutePointDot, { backgroundColor: '#5A189A' }]} />
-            <View style={styles.tripRoutePointInfo}>
-              <Text style={styles.tripRoutePointLabel}>RECOGIDA</Text>
-              <Text style={styles.tripRoutePointAddress}>{acceptedEntrega.direccion_recogida}</Text>
-              <Text style={styles.tripRoutePointNeighborhood}>{acceptedEntrega.barrio_recogida}</Text>
-            </View>
-          </View>
-          <View style={styles.tripRouteLine} />
-          <View style={styles.tripRoutePoint}>
-            <View style={[styles.tripRoutePointDot, styles.tripDestinationDot]} />
-            <View style={styles.tripRoutePointInfo}>
-              <Text style={styles.tripRoutePointLabel}>ENTREGA</Text>
-              <Text style={styles.tripRoutePointAddress}>{acceptedEntrega.direccion_entrega}</Text>
-              <Text style={styles.tripRoutePointNeighborhood}>{acceptedEntrega.barrio_entrega}</Text>
-            </View>
-          </View>
-        </View>
-        <View style={styles.tripPriceDetailCard}>
-          <Text style={styles.tripPriceDetailAmount}>
-            ${Number(acceptedEntrega.precio_ofrecido).toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+  if (!acceptedEntrega) return null
+  const firstName = acceptedEntrega.domiciliario_nombre?.split(" ")[0] || "Domiciliario"
+  return (
+    <View style={{ paddingVertical: rs(8), paddingHorizontal: rs(12) }}>
+
+      {/* Header */}
+      <View style={{ alignItems: "center", marginBottom: rs(14) }}>
+        <Text style={{
+          fontSize: rf(17), fontWeight: "800", color: "#1a1a1a",
+          marginBottom: rs(8), textAlign: "center", letterSpacing: 0.3
+        }}>
+          ¡Tu pedido fue aceptado! 📦
+        </Text>
+        <View style={{
+          backgroundColor: "#5A189A", paddingHorizontal: rs(16),
+          paddingVertical: rs(6), borderRadius: rs(20),
+          shadowColor: "#5A189A", shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.35, shadowRadius: 4, elevation: 5,
+        }}>
+          <Text style={{ color: "#fff", fontSize: rf(12), fontWeight: "700", letterSpacing: 0.8 }}>
+            ✓ CONFIRMADO
           </Text>
         </View>
       </View>
-    )
-  }
+
+      {/* Tarjeta domiciliario */}
+      <View style={{
+        backgroundColor: "#fff", borderRadius: rs(14), padding: rs(14),
+        marginBottom: rs(10), elevation: 4,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.10, shadowRadius: 6,
+        borderWidth: 1, borderColor: "#f0f0f0",
+      }}>
+        {/* Avatar + nombre */}
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: rs(12) }}>
+          <View style={{
+            width: rw(50), height: rw(50), borderRadius: rw(25),
+            backgroundColor: "#5A189A", alignItems: "center", justifyContent: "center",
+            marginRight: rs(12), shadowColor: "#5A189A",
+            shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3,
+            shadowRadius: 5, elevation: 5,
+          }}>
+            <FontAwesome5 name="user" size={rs(24)} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: rf(19), fontWeight: "800", color: "#1a1a1a", letterSpacing: 0.3 }}>
+              {firstName}
+            </Text>
+            <Text style={{ fontSize: rf(12), color: "#888", marginTop: rs(2) }}>Domiciliario</Text>
+          </View>
+        </View>
+
+        {/* Vehículo */}
+        <View style={{
+          backgroundColor: "#F3EEF8", borderRadius: rs(10),
+          padding: rs(10), marginBottom: rs(12),
+          borderLeftWidth: 3, borderLeftColor: "#5A189A",
+        }}>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: rs(4) }}>
+            <FontAwesome5 name="bicycle" size={rs(14)} color="#5A189A" />
+            <Text style={{ fontSize: rf(12), fontWeight: "700", color: "#5A189A", marginLeft: rs(6) }}>
+              VEHÍCULO DE ENTREGA
+            </Text>
+          </View>
+          <Text style={{ fontSize: rf(15), fontWeight: "700", color: "#1a1a1a", textTransform: "capitalize" }}>
+            {acceptedEntrega.vehiculo_tipo}
+          </Text>
+        </View>
+
+        {/* Botón llamar */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#5A189A", borderRadius: rs(22),
+            paddingVertical: rs(11), paddingHorizontal: rs(16),
+            flexDirection: "row", alignItems: "center", justifyContent: "center",
+            shadowColor: "#5A189A", shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.3, shadowRadius: 5, elevation: 5,
+          }}
+          onPress={() => llamarConductora(acceptedEntrega.domiciliario_telefono)}
+        >
+          <FontAwesome name="phone" size={rs(15)} color="#fff" />
+          <Text style={{ color: "#fff", fontSize: rf(14), fontWeight: "700", marginLeft: rs(8) }}>
+            Llamar al domiciliario
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Ruta */}
+      <View style={{
+        backgroundColor: "#fff", borderRadius: rs(14), padding: rs(14),
+        marginBottom: rs(10), elevation: 4,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.10, shadowRadius: 6,
+        borderWidth: 1, borderColor: "#f0f0f0",
+      }}>
+        {/* Recogida */}
+        <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+          <View style={{ alignItems: "center", marginRight: rs(12), paddingTop: rs(3) }}>
+            <View style={{
+              width: rs(11), height: rs(11), borderRadius: rs(6),
+              backgroundColor: "#5A189A",
+              shadowColor: "#5A189A", shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.3, shadowRadius: 2, elevation: 2,
+            }} />
+            <View style={{ width: 2, height: rs(32), backgroundColor: "#C9A7EB", marginVertical: rs(3) }} />
+          </View>
+          <View style={{ flex: 1, paddingBottom: rs(8) }}>
+            <Text style={{ fontSize: rf(10), fontWeight: "700", color: "#5A189A", letterSpacing: 0.8, marginBottom: rs(3) }}>
+              RECOGIDA
+            </Text>
+            <Text style={{ fontSize: rf(15), fontWeight: "700", color: "#1a1a1a", marginBottom: rs(2) }}>
+              {acceptedEntrega.direccion_recogida}
+            </Text>
+            <Text style={{ fontSize: rf(12), color: "#666", fontWeight: "500" }}>
+              {acceptedEntrega.barrio_recogida}
+            </Text>
+          </View>
+        </View>
+
+        {/* Entrega */}
+        <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+          <View style={{ marginRight: rs(12), paddingTop: rs(3) }}>
+            <View style={{
+              width: rs(11), height: rs(11), borderRadius: rs(6),
+              backgroundColor: "#FF69B4",
+              shadowColor: "#FF69B4", shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.3, shadowRadius: 2, elevation: 2,
+            }} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: rf(10), fontWeight: "700", color: "#FF69B4", letterSpacing: 0.8, marginBottom: rs(3) }}>
+              ENTREGA
+            </Text>
+            <Text style={{ fontSize: rf(15), fontWeight: "700", color: "#1a1a1a", marginBottom: rs(2) }}>
+              {acceptedEntrega.direccion_entrega}
+            </Text>
+            <Text style={{ fontSize: rf(12), color: "#666", fontWeight: "500" }}>
+              {acceptedEntrega.barrio_entrega}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Precio — más compacto y centrado */}
+      <View style={{
+        backgroundColor: "#5A189A", borderRadius: rs(14),
+        paddingVertical: rs(8), paddingHorizontal: rs(20),
+        marginBottom: rs(10), alignItems: "center",
+        alignSelf: "center", width: "70%",
+        shadowColor: "#272529", shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35, shadowRadius: 8, elevation: 8,
+      }}>
+        <Text style={{
+          fontSize: rf(10), color: "rgba(255,255,255,0.85)",
+          fontWeight: "700", letterSpacing: 1, marginBottom: rs(4),
+          textTransform: "uppercase",
+        }}>
+          Precio acordado
+        </Text>
+        <Text style={{
+          fontSize: rf(28), fontWeight: "900", color: "#fff", letterSpacing: 0.5,
+        }}>
+          ${Number(acceptedEntrega.precio_ofrecido).toLocaleString("es-CO", {
+            minimumFractionDigits: 0, maximumFractionDigits: 0,
+          })}
+        </Text>
+      </View>
+
+      {/* Cancelar */}
+      <TouchableOpacity
+        style={{
+          width: "100%", flexDirection: "row", alignItems: "center",
+          justifyContent: "center", backgroundColor: "#fff",
+          borderWidth: 2, borderColor: "#FF5722",
+          paddingVertical: rs(13), borderRadius: rs(22),
+          shadowColor: "#FF5722", shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2, shadowRadius: 4, elevation: 3,
+          marginBottom: rs(8),
+        }}
+        onPress={cancelarEntregaAceptada}
+      >
+        <FontAwesome name="times-circle" size={rs(16)} color="#FF5722" />
+        <Text style={{ color: "#FF5722", fontSize: rf(14), fontWeight: "700", marginLeft: rs(8) }}>
+          Cancelar pedido
+        </Text>
+      </TouchableOpacity>
+
+    </View>
+  )
+}
 
   // ─────────────────────────────────────────────
   // GUARDS DE RENDERIZADO
@@ -1255,22 +1435,35 @@ const HomeP = () => {
   }
 
   // Pantalla entrega aceptada
-  if (acceptedEntrega) {
-    return (
-      <LinearGradient colors={["#5A189A", "#5A189A"]} style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#5A189A" />
-        <View style={[styles.mapContainer, { height: screenHeight * 0.4 }]}>{renderMap()}</View>
-        <View style={styles.avatarMenuContainer}>
-          <TouchableOpacity onPress={() => navigateTo("/passenger/ProfileP")} style={styles.avatarButtonContainer} activeOpacity={0.8}>
-            <Ionicons name="person-circle-outline" size={45} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.footer, { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, flex: 1 }]}>
-          <ScrollView showsVerticalScrollIndicator={false}>{renderAcceptedEntregaDetail()}</ScrollView>
-        </View>
-      </LinearGradient>
-    )
-  }
+ // Pantalla entrega aceptada
+if (acceptedEntrega) {
+  return (
+    <LinearGradient colors={["#5A189A", "#5A189A"]} style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#5A189A" />
+      <View style={[styles.mapContainer, { height: screenHeight * 0.3 }]}>{renderMap()}</View>
+      <View style={styles.avatarMenuContainer}>
+        <TouchableOpacity onPress={() => navigateTo("/passenger/ProfileP")} style={styles.avatarButtonContainer} activeOpacity={0.8}>
+          <Ionicons name="person-circle-outline" size={45} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      <View style={[styles.footer, {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        top: screenHeight * 0.27,
+        zIndex: 10,
+        paddingTop: rs(10),
+        paddingHorizontal: rs(16),
+        paddingBottom: Platform.OS === "ios" ? rs(30) : rs(16),
+      }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: rs(16) }}>
+          {renderAcceptedEntregaDetail()}
+        </ScrollView>
+      </View>
+    </LinearGradient>
+  )
+}
 
   // ─────────────────────────────────────────────
   // PANTALLA PRINCIPAL

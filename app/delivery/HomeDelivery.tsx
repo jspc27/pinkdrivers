@@ -308,16 +308,23 @@ const HomeDelivery = () => {
     setCounterOfferPrice("")
   }
 
- const acceptDelivery = async (requestId: string) => {
+const acceptDelivery = async (requestId: string) => {
   try {
     const token = await AsyncStorage.getItem("token")
-    if (!token) { Alert.alert("Error", "Token no encontrado"); return }
+
+    if (!token) {
+      Alert.alert("Error", "Token no encontrado")
+      return
+    }
 
     const response = await fetch(
       "https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_entrega_directa",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ entrega_id: requestId }),
       }
     )
@@ -325,7 +332,7 @@ const HomeDelivery = () => {
     const data = await response.json()
 
     if (response.ok && data.success) {
-      // Buscar en el estado actual, si no está usar los datos que ya tenemos
+
       const found = deliveryRequests.find((r) => r.id === requestId)
 
       const deliveryToSet: DeliveryRequest = found ?? {
@@ -347,15 +354,16 @@ const HomeDelivery = () => {
       setAcceptedDelivery(deliveryToSet)
       setDeliveryStatus("accepted")
       setDeliveryRequests([])
+
       cleanupPolling()
 
-      // Recargar datos completos desde el servidor
+      // recargar datos completos
       await checkContraofertaAceptada()
 
-      Alert.alert("¡Éxito!", "Has aceptado el pedido.")
     } else {
       Alert.alert("Error", data.error || "No se pudo aceptar el pedido.")
     }
+
   } catch {
     Alert.alert("Error", "Error al conectar con el servidor.")
   }
