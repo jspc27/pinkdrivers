@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LinearGradient } from "expo-linear-gradient"
 import { router, useFocusEffect, type ExternalPathString, type RelativePathString } from "expo-router"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Alert, FlatList, Linking, StatusBar, Switch, Text, TextInput, TouchableOpacity, View } from "react-native"
+import { Alert, FlatList, Linking, ScrollView, StatusBar, Switch, Text, TextInput, TouchableOpacity, View } from "react-native"
 import styles from "../styles/Homedeliverystyles"
 
 interface DeliveryRequest {
@@ -308,38 +308,58 @@ const HomeDelivery = () => {
     setCounterOfferPrice("")
   }
 
-  const acceptDelivery = async (requestId: string) => {
-    try {
-      const token = await AsyncStorage.getItem("token")
-      if (!token) { Alert.alert("Error", "Token no encontrado"); return }
+ const acceptDelivery = async (requestId: string) => {
+  try {
+    const token = await AsyncStorage.getItem("token")
+    if (!token) { Alert.alert("Error", "Token no encontrado"); return }
 
-      const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_entrega_directo",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ entrega_id: requestId }),
-        }
-      )
-
-      const data = await response.json()
-
-      if (response.ok) {
-        const found = deliveryRequests.find((r) => r.id === requestId)
-        if (found) {
-          setAcceptedDelivery(found)
-          setDeliveryStatus("accepted")
-          setDeliveryRequests([])
-          cleanupPolling()
-          Alert.alert("¡Éxito!", "Has aceptado el pedido.")
-        }
-      } else {
-        Alert.alert("Error", data.error || "No se pudo aceptar el pedido.")
+    const response = await fetch(
+      "https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_entrega_directa",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ entrega_id: requestId }),
       }
-    } catch {
-      Alert.alert("Error", "Error al conectar con el servidor.")
+    )
+
+    const data = await response.json()
+
+    if (response.ok && data.success) {
+      // Buscar en el estado actual, si no está usar los datos que ya tenemos
+      const found = deliveryRequests.find((r) => r.id === requestId)
+
+      const deliveryToSet: DeliveryRequest = found ?? {
+        id: requestId,
+        clientName: "Cliente",
+        pickupAddress: "",
+        pickupNeighborhood: "",
+        pickupZone: "",
+        deliveryAddress: "",
+        deliveryNeighborhood: "",
+        deliveryZone: "",
+        puntoReferencia: "",
+        isFragile: false,
+        proposedPrice: 0,
+        status: "accepted",
+        client: { phone: "N/A", whatsapp: "N/A" },
+      }
+
+      setAcceptedDelivery(deliveryToSet)
+      setDeliveryStatus("accepted")
+      setDeliveryRequests([])
+      cleanupPolling()
+
+      // Recargar datos completos desde el servidor
+      await checkContraofertaAceptada()
+
+      Alert.alert("¡Éxito!", "Has aceptado el pedido.")
+    } else {
+      Alert.alert("Error", data.error || "No se pudo aceptar el pedido.")
     }
+  } catch {
+    Alert.alert("Error", "Error al conectar con el servidor.")
   }
+}
 
   const rejectDelivery = async (requestId: string) => {
     try {
@@ -477,7 +497,7 @@ const HomeDelivery = () => {
           deliveryAddress: pedidoAceptado.ubicacionEntrega || "",
           deliveryNeighborhood: pedidoAceptado.barrioEntrega || "",
           deliveryZone: pedidoAceptado.zonaEntrega || "",
-          isFragile: pedidoAceptado.es_fragil === true || pedidoAceptado.es_fragil === "1",
+          isFragile: pedidoAceptado.es_fragil === 1 || pedidoAceptado.es_fragil === "1" || pedidoAceptado.es_fragil === true,
           proposedPrice: Number(pedidoAceptado.valorPersonalizado || 0),
           counterOfferPrice: pedidoAceptado.valor_contraoferta ? Number(pedidoAceptado.valor_contraoferta) : undefined,
           status: "accepted",
@@ -600,7 +620,7 @@ const HomeDelivery = () => {
               deliveryAddress: p.ubicacionEntrega || "",
               deliveryNeighborhood: p.barrioEntrega || "",
               deliveryZone: p.zonaEntrega || "",
-              isFragile: p.es_fragil === true || p.es_fragil === "1",
+              isFragile: p.es_fragil === 1 || p.es_fragil === "1" || p.es_fragil === true,
               proposedPrice: Number(p.valorPersonalizado ?? 0),
               counterOfferPrice: p.valor_contraoferta ? Number(p.valor_contraoferta) : undefined,
               status: p.estado === "negociacion" ? "negotiation" : "pending",
@@ -660,244 +680,266 @@ const HomeDelivery = () => {
 
   // ─── RENDER PEDIDO ACEPTADO ───────────────────────────────────────────────────
   const renderAcceptedDeliveryDetail = () => {
-    if (!acceptedDelivery) return null
+  if (!acceptedDelivery) return null
 
-    return (
-      <View style={styles.acceptedDeliveryContainer}>
-        <View style={styles.acceptedDeliveryHeader}>
-          <Text style={styles.acceptedDeliveryTitle}>Pedido en curso</Text>
-          <View style={styles.deliveryStatusBadge}>
-            <Text style={styles.deliveryStatusText}>
-              {deliveryStatus === "accepted" ? "Confirmado" : "En camino"}
+  return (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingBottom: 16 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <View style={styles.acceptedDeliveryHeader}>
+        <Text style={styles.acceptedDeliveryTitle}>Pedido en curso</Text>
+        <View style={styles.deliveryStatusBadge}>
+          <Text style={styles.deliveryStatusText}>
+            {deliveryStatus === "accepted" ? "Confirmado" : "En camino"}
+          </Text>
+        </View>
+      </View>
+
+      {/* Tarjeta cliente */}
+      <View style={styles.clientDetailCard}>
+        <View style={styles.clientIconLarge}>
+          <FontAwesome name="user" size={32} color="#7B2FBE" />
+        </View>
+        <View style={styles.clientDetailInfo}>
+          <Text style={styles.clientNameLarge}>{acceptedDelivery.clientName}</Text>
+
+          {/* Badge frágil */}
+          {acceptedDelivery.isFragile && (
+            <View style={styles.fragileBadgeLarge}>
+              <FontAwesome name="warning" size={12} color="#fff" />
+              <Text style={styles.fragileBadgeText}>Pedido frágil</Text>
+            </View>
+          )}
+
+          <View style={styles.contactButtonsLarge}>
+            <TouchableOpacity
+              style={styles.whatsappButtonLarge}
+              onPress={() => openWhatsApp(acceptedDelivery.client.whatsapp)}
+            >
+              <FontAwesome name="whatsapp" size={18} color="#fff" />
+              <Text style={styles.contactButtonText}>WhatsApp</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.callButtonLarge}
+              onPress={() => callClient(acceptedDelivery.client.phone)}
+            >
+              <FontAwesome name="phone" size={18} color="#fff" />
+              <Text style={styles.contactButtonText}>Llamar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Ruta */}
+      <View style={styles.routeDetailCard}>
+        {/* Recogida */}
+        <View style={styles.routePoint}>
+          <View style={styles.routePointDot} />
+          <View style={styles.routePointInfo}>
+            <Text style={styles.routePointLabel}>RECOGIDA</Text>
+            <Text style={styles.routePointAddress}>{acceptedDelivery.pickupAddress}</Text>
+            <Text style={styles.routePointNeighborhood}>
+              {acceptedDelivery.pickupNeighborhood} • {acceptedDelivery.pickupZone}
             </Text>
           </View>
         </View>
 
-        {/* Tarjeta del cliente */}
-        <View style={styles.clientDetailCard}>
-          <View style={styles.clientIconLarge}>
-            <FontAwesome name="user" size={32} color="#7B2FBE" />
+        {/* Punto de referencia */}
+        {!!acceptedDelivery.puntoReferencia && (
+          <View style={styles.referencePill}>
+            <Text style={styles.referencePillText}>
+              <Text style={styles.referencePillLabel}>Notas: </Text>
+              {acceptedDelivery.puntoReferencia}
+            </Text>
           </View>
-          <View style={styles.clientDetailInfo}>
-            <Text style={styles.clientNameLarge}>{acceptedDelivery.clientName}</Text>
-            {acceptedDelivery.isFragile && (
-              <View style={styles.fragileBadgeLarge}>
-                <FontAwesome name="warning" size={12} color="#fff" />
-                <Text style={styles.fragileBadgeText}>Pedido frágil</Text>
-              </View>
-            )}
-            <View style={styles.contactButtonsLarge}>
-              <TouchableOpacity
-                style={styles.whatsappButtonLarge}
-                onPress={() => openWhatsApp(acceptedDelivery.client.whatsapp)}
-              >
-                <FontAwesome name="whatsapp" size={18} color="#fff" />
-                <Text style={styles.contactButtonText}>WhatsApp</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.callButtonLarge}
-                onPress={() => callClient(acceptedDelivery.client.phone)}
-              >
-                <FontAwesome name="phone" size={18} color="#fff" />
-                <Text style={styles.contactButtonText}>Llamar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        )}
 
-        {/* Ruta */}
-        <View style={styles.routeDetailCard}>
-          <View style={styles.routePoint}>
-            <View style={styles.routePointDot} />
-            <View style={styles.routePointInfo}>
-              <Text style={styles.routePointLabel}>RECOGIDA</Text>
-              <Text style={styles.routePointAddress}>{acceptedDelivery.pickupAddress}</Text>
-              <Text style={styles.routePointNeighborhood}>
-                {acceptedDelivery.pickupNeighborhood} • {acceptedDelivery.pickupZone}
-              </Text>
-              {acceptedDelivery.puntoReferencia ? (
-                <Text style={styles.routePointReference}>
-                  <Text style={styles.referenceLabel}>📍 Referencia: </Text>
-                  {acceptedDelivery.puntoReferencia}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-          <View style={styles.routeLine} />
-          <View style={styles.routePoint}>
-            <View style={[styles.routePointDot, styles.destinationDotLarge]} />
-            <View style={styles.routePointInfo}>
-              <Text style={styles.routePointLabel}>ENTREGA</Text>
-              <Text style={styles.routePointAddress}>{acceptedDelivery.deliveryAddress}</Text>
-              <Text style={styles.routePointNeighborhood}>
-                {acceptedDelivery.deliveryNeighborhood} • {acceptedDelivery.deliveryZone}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <View style={styles.routeLine} />
 
-        {/* Precio */}
-        <View style={styles.priceDetailCard}>
-          <Text style={styles.priceDetailLabel}>Precio acordado</Text>
-          <Text style={styles.priceDetailAmount}>
-            ${acceptedDelivery.proposedPrice.toLocaleString()}
-          </Text>
-        </View>
-
-        {/* Acciones */}
-        <View style={styles.deliveryActionButtons}>
-          <TouchableOpacity style={styles.cancelDeliveryButton} onPress={cancelAcceptedDelivery}>
-            <FontAwesome name="times" size={16} color="#C0392B" />
-            <Text style={styles.cancelDeliveryButtonText}>Cancelar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.completeDeliveryButton} onPress={completeDelivery}>
-            <FontAwesome name="check" size={16} color="#fff" />
-            <Text style={styles.completeDeliveryButtonText}>Entregado</Text>
-          </TouchableOpacity>
+        {/* Entrega */}
+        <View style={styles.routePoint}>
+          <View style={[styles.routePointDot, styles.destinationDotLarge]} />
+          <View style={styles.routePointInfo}>
+            <Text style={styles.routePointLabel}>ENTREGA</Text>
+            <Text style={styles.routePointAddress}>{acceptedDelivery.deliveryAddress}</Text>
+            <Text style={styles.routePointNeighborhood}>
+              {acceptedDelivery.deliveryNeighborhood} • {acceptedDelivery.deliveryZone}
+            </Text>
+          </View>
         </View>
       </View>
-    )
-  }
 
+      {/* Precio */}
+      <View style={styles.priceDetailCard}>
+        <Text style={styles.priceDetailLabel}>Precio acordado</Text>
+        <Text style={styles.priceDetailAmount}>
+          ${acceptedDelivery.proposedPrice.toLocaleString()}
+        </Text>
+      </View>
+
+      {/* Acciones */}
+      <View style={styles.deliveryActionButtons}>
+        <TouchableOpacity style={styles.cancelDeliveryButton} onPress={cancelAcceptedDelivery}>
+          <FontAwesome name="times" size={16} color="#C0392B" />
+          <Text style={styles.cancelDeliveryButtonText}>Cancelar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.completeDeliveryButton} onPress={completeDelivery}>
+          <FontAwesome name="check" size={16} color="#fff" />
+          <Text style={styles.completeDeliveryButtonText}>Entregado</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  )
+}
   // ─── RENDER TARJETA DE SOLICITUD ─────────────────────────────────────────────
   const renderDeliveryRequest = ({ item }: { item: DeliveryRequest }) => {
-    const proposedPrice = item.proposedPrice || 0
-    const coPrice = item.counterOfferPrice
+  const proposedPrice = item.proposedPrice || 0
+  const coPrice = item.counterOfferPrice
 
-    return (
-      <View style={styles.deliveryRequestCard}>
-        {/* Header */}
-        <View style={styles.requestHeader}>
-          <View style={styles.clientInfo}>
-            <View style={styles.clientIcon}>
-              <FontAwesome name="user" size={14} color="#7B2FBE" />
-            </View>
-            <Text style={styles.clientName}>{item.clientName || "Cliente"}</Text>
-            {item.isFragile && (
-              <View style={styles.fragileBadge}>
-                <FontAwesome name="warning" size={10} color="#fff" />
-                <Text style={styles.fragileBadgeSmallText}>Frágil</Text>
-              </View>
-            )}
-            {item.status === "negotiation" && (
-              <View style={styles.negotiationBadge}>
-                <Text style={styles.negotiationBadgeText}>En negociación</Text>
-              </View>
-            )}
+  return (
+    <View style={styles.deliveryRequestCard}>
+      {/* Header */}
+      <View style={styles.requestHeader}>
+        <View style={styles.clientInfo}>
+          <View style={styles.clientIcon}>
+            <FontAwesome name="user" size={14} color="#7B2FBE" />
           </View>
+          <Text style={styles.clientName}>{item.clientName || "Cliente"}</Text>
+          {item.isFragile && (
+            <View style={styles.fragileBadge}>
+              <FontAwesome name="warning" size={10} color="#fff" />
+              <Text style={styles.fragileBadgeSmallText}>⚠ Frágil</Text>
+            </View>
+          )}
+          {item.status === "negotiation" && (
+            <View style={styles.negotiationBadge}>
+              <Text style={styles.negotiationBadgeText}>En negociación</Text>
+            </View>
+          )}
         </View>
+      </View>
 
-        {/* Ubicaciones */}
-        <View style={styles.locationsContainer}>
-          <View style={styles.locationsRow}>
-            <View style={styles.locationCompact}>
-              <View style={styles.locationDot} />
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>RECOGIDA</Text>
-                <Text style={styles.locationAddress} numberOfLines={1}>
-                  {item.pickupAddress || "Dirección no disponible"}
-                </Text>
-                <Text style={styles.locationNeighborhood}>
-                  {item.pickupNeighborhood} • {item.pickupZone}
-                </Text>
-                {item.puntoReferencia ? (
-                  <Text style={styles.referencePoint}>
-                    <Text style={styles.referenceLabel}>Ref:</Text> {item.puntoReferencia}
-                  </Text>
-                ) : null}
-              </View>
+      {/* Ubicaciones */}
+      <View style={styles.locationsContainer}>
+        <View style={styles.locationsRow}>
+          <View style={styles.locationCompact}>
+            <View style={styles.locationDot} />
+            <View style={styles.locationInfo}>
+              <Text style={styles.locationLabel}>RECOGIDA</Text>
+              <Text style={styles.locationAddress} numberOfLines={1}>
+                {item.pickupAddress || "Dirección no disponible"}
+              </Text>
+              {/* Barrio y zona más visibles */}
+              <Text style={styles.locationNeighborhood}>
+                {item.pickupNeighborhood} · {item.pickupZone}
+              </Text>
             </View>
-            <View style={styles.locationArrow}>
-              <FontAwesome name="arrow-right" size={12} color="#C9A7EB" />
-            </View>
-            <View style={styles.locationCompact}>
-              <View style={[styles.locationDot, styles.destinationDot]} />
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel2}>ENTREGA</Text>
-                <Text style={[styles.locationAddress, { flexShrink: 1, flexWrap: "wrap" }]}>
-                  {item.deliveryAddress || "Destino no disponible"}
-                </Text>
-                <Text style={styles.locationNeighborhood}>
-                  {item.deliveryNeighborhood} • {item.deliveryZone}
-                </Text>
-              </View>
+          </View>
+          <View style={styles.locationArrow}>
+            <FontAwesome name="arrow-right" size={12} color="#C9A7EB" />
+          </View>
+          <View style={styles.locationCompact}>
+            <View style={[styles.locationDot, styles.destinationDot]} />
+            <View style={styles.locationInfo}>
+              <Text style={styles.locationLabel2}>ENTREGA</Text>
+              <Text style={[styles.locationAddress, { flexShrink: 1, flexWrap: "wrap" }]}>
+                {item.deliveryAddress || "Destino no disponible"}
+              </Text>
+              <Text style={styles.locationNeighborhood}>
+                {item.deliveryNeighborhood} · {item.deliveryZone}
+              </Text>
             </View>
           </View>
         </View>
+      </View>
 
-        {/* Precio + negociación */}
-        <View style={styles.priceMainContainer}>
-          <View style={styles.priceLeftSection}>
-            {item.status === "negotiation" && coPrice ? (
-              <View style={styles.priceNegotiationContainer}>
-                <Text style={styles.originalPrice}>${proposedPrice.toLocaleString()}</Text>
-                <Text style={styles.counterOfferPrice}>→ ${coPrice.toLocaleString()}</Text>
-              </View>
-            ) : (
-              <Text style={styles.priceAmount}>${proposedPrice.toLocaleString()}</Text>
-            )}
-          </View>
+      {/* Notas — solo si existen */}
+      {!!item.puntoReferencia && (
+        <View style={styles.notasCardBanner}>
+          <FontAwesome name="sticky-note" size={12} color="#7B2FBE" />
+          <Text style={styles.notasCardText}>
+            <Text style={styles.notasCardLabel}>Notas: </Text>
+            {item.puntoReferencia}
+          </Text>
+        </View>
+      )}
 
-          {item.status === "negotiation" ? (
-            <View style={styles.waitingResponse}>
-              <FontAwesome name="clock-o" size={12} color="#7B2FBE" />
-              <Text style={styles.waitingResponseText}>Esperando respuesta</Text>
-            </View>
-          ) : editingPrice === item.id ? (
-            <View style={styles.priceEditContainer}>
-              <TextInput
-                style={styles.priceInput}
-                value={counterOfferPrice}
-                onChangeText={setCounterOfferPrice}
-                keyboardType="numeric"
-                placeholder="Precio"
-                autoFocus
-              />
-              <TouchableOpacity style={styles.submitPriceButton} onPress={() => submitCounterOffer(item.id)}>
-                <FontAwesome name="check" size={12} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelPriceButton} onPress={() => setEditingPrice(null)}>
-                <FontAwesome name="times" size={12} color="#7B2FBE" />
-              </TouchableOpacity>
+      {/* Precio + negociación */}
+      <View style={styles.priceMainContainer}>
+        <View style={styles.priceLeftSection}>
+          {item.status === "negotiation" && coPrice ? (
+            <View style={styles.priceNegotiationContainer}>
+              <Text style={styles.originalPrice}>${proposedPrice.toLocaleString()}</Text>
+              <Text style={styles.counterOfferPrice}>→ ${coPrice.toLocaleString()}</Text>
             </View>
           ) : (
-            <TouchableOpacity style={styles.negotiateButton} onPress={() => handlePriceEdit(item.id, proposedPrice)}>
-              <FontAwesome name="edit" size={12} color="#7B2FBE" />
-              <Text style={styles.negotiateButtonText}>Negociar</Text>
-            </TouchableOpacity>
+            <Text style={styles.priceAmount}>${proposedPrice.toLocaleString()}</Text>
           )}
         </View>
 
-        {/* Botones acción */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.rejectButton} onPress={() => rejectDelivery(item.id)}>
-            <Text style={styles.rejectButtonText}>Rechazar</Text>
+        {item.status === "negotiation" ? (
+          <View style={styles.waitingResponse}>
+            <FontAwesome name="clock-o" size={12} color="#7B2FBE" />
+            <Text style={styles.waitingResponseText}>Esperando respuesta</Text>
+          </View>
+        ) : editingPrice === item.id ? (
+          <View style={styles.priceEditContainer}>
+            <TextInput
+              style={styles.priceInput}
+              value={counterOfferPrice}
+              onChangeText={setCounterOfferPrice}
+              keyboardType="numeric"
+              placeholder="Precio"
+              autoFocus
+            />
+            <TouchableOpacity style={styles.submitPriceButton} onPress={() => submitCounterOffer(item.id)}>
+              <FontAwesome name="check" size={12} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelPriceButton} onPress={() => setEditingPrice(null)}>
+              <FontAwesome name="times" size={12} color="#7B2FBE" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.negotiateButton} onPress={() => handlePriceEdit(item.id, proposedPrice)}>
+            <FontAwesome name="edit" size={12} color="#7B2FBE" />
+            <Text style={styles.negotiateButtonText}>Negociar</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.acceptButton,
-              (item.status === "negotiation" || editingPrice === item.id) && styles.acceptButtonDisabled,
-            ]}
-            onPress={() => acceptDelivery(item.id)}
-            disabled={item.status === "negotiation" || editingPrice === item.id}
-          >
-            <Text
-              style={[
-                styles.acceptButtonText,
-                (item.status === "negotiation" || editingPrice === item.id) && styles.acceptButtonTextDisabled,
-              ]}
-            >
-              {item.status === "negotiation"
-                ? "En negociación"
-                : editingPrice === item.id
-                ? "Negociando"
-                : "Aceptar"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
-    )
-  }
+
+      {/* Botones acción */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.rejectButton} onPress={() => rejectDelivery(item.id)}>
+          <Text style={styles.rejectButtonText}>Rechazar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.acceptButton,
+            (item.status === "negotiation" || editingPrice === item.id) && styles.acceptButtonDisabled,
+          ]}
+          onPress={() => acceptDelivery(item.id)}
+          disabled={item.status === "negotiation" || editingPrice === item.id}
+        >
+          <Text
+            style={[
+              styles.acceptButtonText,
+              (item.status === "negotiation" || editingPrice === item.id) && styles.acceptButtonTextDisabled,
+            ]}
+          >
+            {item.status === "negotiation"
+              ? "En negociación"
+              : editingPrice === item.id
+              ? "Negociando"
+              : "Aceptar"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
 
   // ─── RENDER PRINCIPAL ─────────────────────────────────────────────────────────
   return (
