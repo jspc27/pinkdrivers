@@ -7,16 +7,15 @@ import * as Location from "expo-location"
 import { useRouter } from "expo-router"
 import { useState } from "react"
 import {
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native"
 import StyledAlert from "../components/StyledAlert"
 import styles from "../styles/LoginDeliverystyles"
@@ -144,15 +143,7 @@ const LoginDelivery = () => {
               <Text style={styles.logoText}>PinkEntregas</Text>
             </View>
 
-            {/* Logo */}
-            <View style={styles.logoContainer}>
-              <Image
-                source={require("../../assets/images/LogoPink3.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
-
+           
             {/* Título abajo */}
             <View style={styles.tituloContainer}>
               <Text style={styles.logoText}>Domiciliario</Text>

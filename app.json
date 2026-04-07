@@ -34,6 +34,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "La app necesita acceso a tu cámara para tomar fotos de evidencia de entrega."
+        }
       ]
     ],
     "experiments": {

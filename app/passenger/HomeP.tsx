@@ -25,8 +25,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
-import styles from "../styles/HomePstyles"
 import { rf, rs, rw } from "../../utils/responsive"; // ajusta la ruta según tu estructura
+import styles from "../styles/HomePstyles"
 
 const { height: screenHeight } = Dimensions.get("window")
 
@@ -258,7 +258,7 @@ const loadAcceptedEntrega = async () => {
   // ─────────────────────────────────────────────
   // UBICACIÓN
   // ─────────────────────────────────────────────
-  const obtenerDireccion = async (lat: number, lng: number) => {
+ const obtenerDireccion = async (lat: number, lng: number) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
         headers: { "User-Agent": "PinkDrivers (soportepinkdrivers@gmail.com)" },
@@ -268,11 +268,20 @@ const loadAcceptedEntrega = async () => {
         setUbicacionActual(data.address.road || "Ubicación no encontrada")
         setBarrioActual(data.address.neighbourhood || data.address.suburb || "")
         setZonaActual(determinarZona(lat, lng))
-        setCiudadActual(data.address.city || data.address.town || data.address.village || "Cali")
+
+        // ✅ Limpiar ciudad para ciudadActual
+        const ciudadRaw = data.address.city || data.address.town || data.address.village || "Cali"
+        const ciudadLimpia = ciudadRaw
+          .replace(/\s*(ciudad|city|municipio|distrito)\s*/gi, "")
+          .trim() || "Cali"
+        setCiudadActual(ciudadLimpia)
+
         setPickupAddress(data.address.road || "")
         setPickupBarrio(data.address.neighbourhood || data.address.suburb || "")
         setPickupZona(determinarZona(lat, lng))
-        setPickupCiudad(data.address.city || data.address.town || data.address.village || "Cali")
+
+        // ✅ MISMO fix para pickupCiudad - antes guardaba "Cali ciudad"
+        setPickupCiudad(ciudadLimpia)
       } else {
         setUbicacionActual("Ubicación no encontrada")
       }
@@ -514,6 +523,7 @@ const loadAcceptedEntrega = async () => {
     if (!result.success || !result.data) return
 
     const data = result.data
+    //console.log("RESPUESTA API ENTREGA:", JSON.stringify(data)) 
 
     if (data.entrega_finalizada) {
       const nombre = data.entrega_finalizada.domiciliario_nombre?.split(" ")[0] || "El domiciliario"

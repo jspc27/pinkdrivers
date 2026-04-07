@@ -5,17 +5,16 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import React, { useState } from 'react'
 import {
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import StyledAlert from '../components/StyledAlert'
 import styles from '../styles/Registerdeliverystyles'
@@ -157,14 +156,7 @@ const RegisterDelivery = () => {
         >
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-            {/* Logo */}
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../../assets/images/LogoPink3.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
+            
 
             <View style={styles.tituloContainer}>
               <Text style={styles.logoText}>Registro Domiciliario</Text>
