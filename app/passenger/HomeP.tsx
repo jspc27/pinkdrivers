@@ -151,6 +151,7 @@ const HomeP = () => {
     precio: string
     vehiculo: string
   } | null>(null)
+  const [entregaActivaId, setEntregaActivaId] = useState<number | null>(null)
 
   // ── Usuario ────────────────────────────────
   const [usuarioId, setUsuarioId] = useState<number | null>(null)
@@ -201,7 +202,13 @@ const HomeP = () => {
       return null
     }
   }
+   
 
+  const limpiarPrecio = (valor: string): number => {
+  // Elimina puntos y comas (separadores de miles) y convierte a número
+  const limpio = valor.replace(/[.,]/g, "")
+  return parseFloat(limpio) || 0
+} 
   const determinarZona = (latitude: number, longitude: number) => {
     if (latitude > 3.45 && longitude < -76.53) return "Norte"
     if (latitude < 3.45 && longitude < -76.53) return "Sur"
@@ -261,7 +268,7 @@ const loadAcceptedEntrega = async () => {
  const obtenerDireccion = async (lat: number, lng: number) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
-        headers: { "User-Agent": "PinkDrivers (soportepinkdrivers@gmail.com)" },
+        headers: { "User-Agent": "ellasvan (soporteellasvan@gmail.com)" },
       })
       const data = JSON.parse(await response.text())
       if (data.address) {
@@ -368,7 +375,7 @@ const loadAcceptedEntrega = async () => {
   const consultarContraoferta = async () => {
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=ver_contraoferta", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       })
@@ -393,7 +400,7 @@ const loadAcceptedEntrega = async () => {
       if (!token) { setAcceptedTrip(null); return }
 
       const result = await fetchWithErrorHandling(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado",
+        "https://www.ellasvan.com/api-rest/index.php?action=viaje_aceptado",
         { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
       )
       if (!result.success) {
@@ -493,7 +500,7 @@ const loadAcceptedEntrega = async () => {
   const consultarContraofertaEntrega = async () => {
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=ver_contraoferta_entrega", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=ver_contraoferta_entrega", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       })
@@ -517,7 +524,7 @@ const loadAcceptedEntrega = async () => {
     if (!token) return
 
     const result = await fetchWithErrorHandling(
-      "https://www.pinkdrivers.com/api-rest/index.php?action=ver_entrega_aceptada",
+      "https://www.ellasvan.com/api-rest/index.php?action=ver_entrega_aceptada",
       { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
     )
     if (!result.success || !result.data) return
@@ -588,7 +595,7 @@ const loadAcceptedEntrega = async () => {
     setIsProcessingResponse(true)
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_contraoferta", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=aceptar_contraoferta", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ viaje_id: contraofertaData.viaje_id, aceptado: true }),
@@ -623,7 +630,7 @@ const loadAcceptedEntrega = async () => {
     setIsProcessingResponse(true)
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=rechazar_contraoferta", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=rechazar_contraoferta", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ viaje_id: contraofertaData.viaje_id, aceptado: false }),
@@ -648,7 +655,7 @@ const loadAcceptedEntrega = async () => {
   const cancelarBusqueda = async () => {
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=cancelar_viaje", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({})
@@ -679,7 +686,7 @@ const loadAcceptedEntrega = async () => {
             setIsLoadingAcceptedTrip(true)
             const token = await AsyncStorage.getItem("token")
             const result = await fetchWithErrorHandling(
-              "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje",
+              "https://www.ellasvan.com/api-rest/index.php?action=cancelar_viaje",
               {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -728,10 +735,10 @@ const loadAcceptedEntrega = async () => {
         ubicacionActual, barrioActual, zonaActual, ciudadActual,
         destinoDireccion, destinoBarrio, destinoZona, puntoReferencia,
         selectedVehicle,
-        valorPersonalizado: Number.parseFloat(valorPersonalizado),
+        valorPersonalizado: limpiarPrecio(valorPersonalizado),
         usuario_id: usuarioId,
       }
-      const res = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viajes", {
+      const res = await fetch("https://www.ellasvan.com/api-rest/index.php?action=viajes", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${await AsyncStorage.getItem("token")}` },
         body: JSON.stringify(viajeData),
@@ -758,7 +765,7 @@ const loadAcceptedEntrega = async () => {
     setIsProcessingEntregaResponse(true)
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_contraoferta_entrega", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=aceptar_contraoferta_entrega", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ entrega_id: contraofertaEntregaData.entrega_id }),
@@ -795,7 +802,7 @@ const loadAcceptedEntrega = async () => {
     setIsProcessingEntregaResponse(true)
     try {
       const token = await AsyncStorage.getItem("token")
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=rechazar_contraoferta_entrega", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=rechazar_contraoferta_entrega", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ entrega_id: contraofertaEntregaData.entrega_id }),
@@ -842,10 +849,10 @@ const loadAcceptedEntrega = async () => {
         es_fragil: isFragile ? 1 : 0,
         notas_adicionales: deliveryNotes,
         vehiculo_requerido: deliveryVehicle,
-        precio_ofrecido: parseFloat(deliveryPrice),
+        precio_ofrecido: limpiarPrecio(deliveryPrice),
       }
 
-      const res = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=post_entrega", {
+      const res = await fetch("https://www.ellasvan.com/api-rest/index.php?action=post_entrega", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(bodyData),
@@ -860,12 +867,13 @@ const loadAcceptedEntrega = async () => {
       }
 
       if (res.ok && json.success !== false) {
-        setEntregaResumen({
-          recogida: pickupAddress,
-          entrega: deliveryAddress,
-          precio: deliveryPrice,
-          vehiculo: deliveryVehicle,
-        })
+    setEntregaActivaId(json.entrega_id)  // ← AGREGAR
+    setEntregaResumen({
+        recogida: pickupAddress,
+        entrega: deliveryAddress,
+        precio: deliveryPrice,
+        vehiculo: deliveryVehicle,
+    })
         // Limpiar formulario
         setSenderName(""); setSenderPhone(""); setReceiverName(""); setReceiverPhone("")
         setDeliveryAddress(""); setDeliveryBarrio(""); setDeliveryZona("")
@@ -883,20 +891,29 @@ const loadAcceptedEntrega = async () => {
   }
 
   const cancelarEntrega = async () => {
-    try {
-      const token = await AsyncStorage.getItem("token")
-      await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega", {
+  try {
+    const token = await AsyncStorage.getItem("token")
+    const response = await fetch(
+      "https://www.ellasvan.com/api-rest/index.php?action=cancelar_entrega_usuario",
+      {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({})
-      })
-    } catch (e) {
-      console.error("Error al cancelar entrega:", e)
+        body: JSON.stringify({ entrega_id: entregaActivaId })
+      }
+    )
+    const data = await response.json()
+    if (response.ok && data.success) {
+      setIsWaitingForDelivery(false)
+      setEntregaResumen(null)
+      setEntregaActivaId(null)
+      setIsModalVisible(false)
+    } else {
+      Alert.alert("Error", data.error || "No se pudo cancelar el pedido.")
     }
-    setIsWaitingForDelivery(false)
-    setEntregaResumen(null)
-    setIsModalVisible(false)
+  } catch (e) {
+    Alert.alert("Error de conexión", "No se pudo conectar con el servidor.")
   }
+}
 
   const cancelarEntregaAceptada = async () => {
   if (!acceptedEntrega) return
@@ -910,7 +927,7 @@ const loadAcceptedEntrega = async () => {
         try {
           const token = await AsyncStorage.getItem("token")
           const response = await fetch(
-            "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega_usuario",
+            "https://www.ellasvan.com/api-rest/index.php?action=cancelar_entrega_usuario",
             {
               method: "POST",
               headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -1102,7 +1119,7 @@ const loadAcceptedEntrega = async () => {
       const decodedToken = decodeJWT(token)
       if (decodedToken?.id) { setUsuarioId(decodedToken.id); setUsuarioData(decodedToken); return }
 
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=getUser", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       })
@@ -1444,7 +1461,6 @@ const loadAcceptedEntrega = async () => {
     )
   }
 
-  // Pantalla entrega aceptada
  // Pantalla entrega aceptada
 if (acceptedEntrega) {
   return (

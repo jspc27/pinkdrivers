@@ -44,6 +44,9 @@ const HomeDriver = () => {
   const isPollingActiveRef = useRef(false)
   const lastFetchTimestamp = useRef<number>(0)
 
+
+  const canceladoMostradoRef = useRef(false)
+
   const decodeJWT = (token: string) => {
     try {
       const base64Url = token.split(".")[1]
@@ -171,7 +174,7 @@ const HomeDriver = () => {
           return
         }
 
-        const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", {
+        const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=viaje_aceptado_conductora", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -181,12 +184,18 @@ const HomeDriver = () => {
 
         // Tratar respuesta vacía como cancelación
         if (!text || text.trim() === '') {
-          console.log("🔴 Respuesta vacía - viaje cancelado")
-          Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
-          setAcceptedRide(null)
-          setRideStatus("pending")
-          return
-        }
+  if (canceladoMostradoRef.current) return
+  canceladoMostradoRef.current = true
+  clearInterval(intervalId)
+  Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.", [{
+    text: "OK", onPress: () => {
+      canceladoMostradoRef.current = false
+      setAcceptedRide(null)
+      setRideStatus("pending")
+    }
+  }])
+  return
+}
 
         let data
         try {
@@ -201,12 +210,18 @@ const HomeDriver = () => {
 
         // Si no hay viaje o está cancelado
         if (!viajeAceptado || viajeAceptado.estado === "cancelado" || data.success === false) {
-          console.log("🔴 Viaje no encontrado o cancelado")
-          Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.")
-          setAcceptedRide(null)
-          setRideStatus("pending")
-          return
-        }
+  if (canceladoMostradoRef.current) return
+  canceladoMostradoRef.current = true
+  clearInterval(intervalId)
+  Alert.alert("Viaje cancelado", "La pasajera ha cancelado el viaje.", [{
+    text: "OK", onPress: () => {
+      canceladoMostradoRef.current = false
+      setAcceptedRide(null)
+      setRideStatus("pending")
+    }
+  }])
+  return
+}
 
         // ✅ CLAVE: Mapear correctamente los datos del backend al formato RideRequest
         const mappedRide: RideRequest = {
@@ -348,7 +363,7 @@ const HomeDriver = () => {
         nuevo_precio: newPrice,
       })
 
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=crear_contraoferta", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=crear_contraoferta", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -378,7 +393,7 @@ const HomeDriver = () => {
 
         Alert.alert(
           "Contrapropuesta enviada",
-          `Has propuesto $${newPrice.toLocaleString()}. La pasajera será notificada y podrá aceptar o rechazar tu propuesta.`,
+          `Has propuesto $${newPrice.toLocaleString("es-CO")}. La pasajera será notificada y podrá aceptar o rechazar tu propuesta.`,
         )
         console.log("✅ Contrapropuesta enviada exitosamente")
       } else {
@@ -402,7 +417,7 @@ const HomeDriver = () => {
         return
       }
 
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_viaje_directo", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=aceptar_viaje_directo", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -457,7 +472,7 @@ const HomeDriver = () => {
         onPress: async () => {
           try {
             const token = await AsyncStorage.getItem("token")
-            const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=finalizar_viaje", {
+            const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=finalizar_viaje", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -475,7 +490,7 @@ const HomeDriver = () => {
               setRideStatus("pending")
               Alert.alert(
                 "¡Viaje finalizado!",
-                `Viaje completado exitosamente. Valor: $${data.valor_final?.toLocaleString()}`,
+                `Viaje completado exitosamente. Valor: $${data.valor_final?.toLocaleString("es-CO")}`,
                 [
                   {
                     text: "OK",
@@ -509,7 +524,7 @@ const HomeDriver = () => {
         onPress: async () => {
           try {
             const token = await AsyncStorage.getItem("token")
-            const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_viaje", {
+            const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=cancelar_viaje", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -554,7 +569,7 @@ const HomeDriver = () => {
     }
 
     try {
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=getUser", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -583,7 +598,7 @@ const checkContraofertaAceptada = async () => {
     if (!token) return
 
     const response = await fetch(
-      "https://www.pinkdrivers.com/api-rest/index.php?action=viaje_aceptado_conductora", 
+      "https://www.ellasvan.com/api-rest/index.php?action=viaje_aceptado_conductora", 
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -692,7 +707,7 @@ const fetchPendingRides = async () => {
       for (const rideId of currentRideIds) {
         try {
           const statusResponse = await fetch(
-            `https://www.pinkdrivers.com/api-rest/index.php?action=verificar_estado_viaje&viaje_id=${rideId}`,
+            `https://www.ellasvan.com/api-rest/index.php?action=verificar_estado_viaje&viaje_id=${rideId}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -736,7 +751,7 @@ const fetchPendingRides = async () => {
 
     // 🔥 PASO 2: Obtener lista actualizada del servidor
     const currentIdsForServer = rideRequests.map((r) => r.id).join(",")
-    const url = `https://www.pinkdrivers.com/api-rest/index.php?action=viajes_pendientes&checkStates=true&currentIds=${currentIdsForServer}&timestamp=${now}`
+    const url = `https://www.ellasvan.com/api-rest/index.php?action=viajes_pendientes&checkStates=true&currentIds=${currentIdsForServer}&timestamp=${now}`
 
     console.log("📡 Consultando servidor:", url)
 
@@ -999,7 +1014,7 @@ const fetchPendingRides = async () => {
 
         <View style={styles.priceDetailCard}>
           <Text style={styles.priceDetailLabel}>Precio acordado</Text>
-          <Text style={styles.priceDetailAmount}>${acceptedRide.proposedPrice.toLocaleString()} </Text>
+          <Text style={styles.priceDetailAmount}>${acceptedRide.proposedPrice.toLocaleString("es-CO")} </Text>
         </View>
 
         <View style={styles.rideActionButtons}>
@@ -1091,15 +1106,15 @@ const fetchPendingRides = async () => {
             {item.status === "negotiation" && counterOfferPrice ? (
               <View style={styles.priceNegotiationContainer}>
                 <Text style={styles.originalPrice}>
-                  ${proposedPrice.toLocaleString()}
+                  ${proposedPrice.toLocaleString("es-CO")}
                 </Text>
                 <Text style={styles.counterOfferPrice}>
-                  → ${counterOfferPrice.toLocaleString()}
+                  → ${counterOfferPrice.toLocaleString("es-CO")}
                 </Text>
               </View>
             ) : (
               <Text style={styles.priceAmount}>
-                ${proposedPrice.toLocaleString()}
+                ${proposedPrice.toLocaleString("es-CO")}
               </Text>
             )}
           </View>

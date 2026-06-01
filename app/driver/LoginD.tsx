@@ -48,7 +48,7 @@ const LoginD = () => {
     }
 
     try {
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=login", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -171,7 +171,7 @@ const LoginD = () => {
             </View>
 
             <View style={styles.logoContainer}>
-              <Image source={require("../../assets/images/LogoPink.png")} style={styles.logo} resizeMode="contain" />
+              <Image source={require("../../assets/images/LogoPink3.png")} style={styles.logo} resizeMode="contain" />
             </View>
 
             <View style={styles.tituloContainer}>
@@ -221,7 +221,7 @@ const LoginD = () => {
 
             <View style={styles.signupContainer}>
               <Text style={styles.signupText}>¿No tienes cuenta? </Text>
-              <TouchableOpacity onPress={() => Linking.openURL("https://www.pinkdrivers.com/registerDrivers.html")}>
+              <TouchableOpacity onPress={() => Linking.openURL("https://www.ellasvan.com/registerDrivers.html")}>
                 <Text style={styles.signupLink}>Regístrate</Text>
               </TouchableOpacity>
             </View>

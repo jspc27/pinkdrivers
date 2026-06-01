@@ -54,7 +54,7 @@ export default function CambiarContrasena() {
 
     try {
       setCargando(true)
-      const res = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=cambiar_contrasena", {
+      const res = await fetch("https://www.ellasvan.com/api-rest/index.php?action=cambiar_contrasena", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ telefono, nuevaClave: nuevaContrasena }),

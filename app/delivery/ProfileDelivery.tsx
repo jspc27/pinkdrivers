@@ -22,7 +22,7 @@ const ProfileDelivery = () => {
 
     try {
       const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=getUser",
+        "https://www.ellasvan.com/api-rest/index.php?action=getUser",
         {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },

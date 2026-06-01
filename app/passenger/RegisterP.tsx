@@ -31,7 +31,7 @@ const RegisterP = () => {
     }
 
     try {
-      const response = await fetch('https://www.pinkdrivers.com/api-rest/index.php?action=register', {
+      const response = await fetch('https://www.ellasvan.com/api-rest/index.php?action=register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,7 +78,7 @@ const RegisterP = () => {
         >
           <View style={styles.logoContainer}>
             <Image 
-              source={require('../../assets/images/LogoPink.png')} 
+              source={require('../../assets/images/LogoPink3.png')} 
               style={styles.logo}
               resizeMode="contain"
             />

@@ -43,7 +43,7 @@ const Index = () => {
             style={styles.button}
             onPress={() => router.push('/passenger/LoginP')}
           >
-            <Text style={styles.buttonText}>Soy pasajer@</Text>
+            <Text style={styles.buttonText}>Soy pasajer@ y pido domicilios</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 

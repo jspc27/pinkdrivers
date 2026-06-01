@@ -37,6 +37,8 @@ const RegisterDelivery = () => {
   const [vehiculo, setVehiculo] = useState('')
   const [showTipoIdPicker, setShowTipoIdPicker] = useState(false)
 
+  const [ciudad, setCiudad] = useState('')
+
   const [showAlert, setShowAlert] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -47,10 +49,10 @@ const RegisterDelivery = () => {
   }
 
   const handleRegister = async () => {
-    if (!nombre || !tipoId || !numeroId || !email || !telefono || !password || !vehiculo) {
-      showStyledAlert('❌ Todos los campos son obligatorios.')
-      return
-    }
+    if (!nombre || !tipoId || !numeroId || !email || !telefono || !password || !vehiculo || !ciudad) {
+  showStyledAlert('❌ Todos los campos son obligatorios.')
+  return
+}
     if (telefono.length !== 10) {
       showStyledAlert('❌ El número de teléfono debe tener exactamente 10 dígitos.')
       return
@@ -58,7 +60,7 @@ const RegisterDelivery = () => {
 
     try {
       const response = await fetch(
-        'https://www.pinkdrivers.com/api-rest/index.php?action=register_domiciliario',
+        'https://www.ellasvan.com/api-rest/index.php?action=register_domiciliario',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -70,6 +72,7 @@ const RegisterDelivery = () => {
             telefono,
             password,
             tipo_vehiculo: vehiculo,
+            ciudad: ciudad,
             rol: 'domiciliario',
           }),
         }
@@ -256,6 +259,19 @@ const RegisterDelivery = () => {
                   style={styles.input}
                 />
               </View>
+
+              {/*Ciudad*/}
+              <View style={styles.inputWrapper}>
+  <FontAwesome5 name="map-marker-alt" color="#5A189A" size={20} style={styles.inputIcon} />
+  <TextInput
+    placeholder="Ciudad donde trabajas"
+    placeholderTextColor="#999"
+    value={ciudad}
+    onChangeText={setCiudad}
+    autoCapitalize="words"
+    style={styles.input}
+  />
+</View>
 
               {/* Contraseña */}
               <View style={styles.inputWrapper}>

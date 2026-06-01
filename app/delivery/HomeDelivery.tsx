@@ -65,19 +65,25 @@ const HomeDelivery = () => {
   const isPollingActiveRef = useRef(false)
   const lastFetchTimestamp = useRef<number>(0)
 
-  // ─── JWT sin librería base-64 (compatible con Hermes/Android) ─────────────
+
+  const canceladoMostradoRef = useRef(false)
+
   const decodeJWT = (token: string) => {
-    try {
-      const base64Url = token.split(".")[1]
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
-      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=")
-      const jsonPayload = JSON.parse(Buffer.from(padded, "base64").toString("utf8"))
-      return jsonPayload
-    } catch (error) {
-      console.error("Error decodificando JWT:", error)
-      return null
-    }
+  try {
+    const base64Url = token.split(".")[1]
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    )
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    console.error("Error decodificando JWT:", error)
+    return null
   }
+}
 
   // ─── ASYNC STORAGE ─────────────────────────────────────────────────────────
   const loadDeliveryActiveStatus = async () => {
@@ -177,7 +183,7 @@ const HomeDelivery = () => {
         if (!token) return
 
         const response = await fetch(
-          "https://www.pinkdrivers.com/api-rest/index.php?action=entrega_aceptada_domiciliario",
+          "https://www.ellasvan.com/api-rest/index.php?action=entrega_aceptada_domiciliario",
           { headers: { Authorization: `Bearer ${token}` } }
         )
 
@@ -195,11 +201,22 @@ const HomeDelivery = () => {
         const pedidoAceptado = data?.pedido_aceptado || data?.pedido
 
         if (!pedidoAceptado || pedidoAceptado.estado === "cancelado" || data.success === false) {
-          Alert.alert("Pedido cancelado", "El cliente ha cancelado el pedido.")
-          setAcceptedDelivery(null)
-          setDeliveryStatus("pending")
-          return
-        }
+  if (canceladoMostradoRef.current) return
+  canceladoMostradoRef.current = true
+  clearInterval(intervalId)
+  Alert.alert(
+    "Pedido cancelado",
+    "El cliente ha cancelado el pedido.",
+    [{
+      text: "OK", onPress: () => {
+        canceladoMostradoRef.current = false
+        setAcceptedDelivery(null)
+        setDeliveryStatus("pending")
+      }
+    }]
+  )
+  return
+}
 
         const mapped: DeliveryRequest = {
           id: pedidoAceptado.id.toString(),
@@ -286,7 +303,8 @@ const HomeDelivery = () => {
   }
 
   const submitCounterOffer = async (requestId: string) => {
-    const newPrice = Number.parseInt(counterOfferPrice)
+    const cleanPrice = counterOfferPrice.replace(/[.,]/g, "")
+    const newPrice = parseInt(cleanPrice, 10)
     if (!newPrice || newPrice <= 0) {
       Alert.alert("Error", "Por favor ingresa un precio válido.")
       return
@@ -296,7 +314,7 @@ const HomeDelivery = () => {
       if (!token) { Alert.alert("Error", "Token no encontrado"); return }
 
       const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=crear_contraoferta_entrega",
+        "https://www.ellasvan.com/api-rest/index.php?action=crear_contraoferta_entrega",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -310,7 +328,7 @@ const HomeDelivery = () => {
             r.id === requestId ? { ...r, counterOfferPrice: newPrice, status: "negotiation" as const } : r
           )
         )
-        Alert.alert("Contrapropuesta enviada", `Has propuesto $${newPrice.toLocaleString()}. El cliente será notificado.`)
+        Alert.alert("Contrapropuesta enviada", `Has propuesto $${newPrice.toLocaleString("es-CO")}. El cliente será notificado.`)
       } else {
         Alert.alert("Error", data.error || "No se pudo enviar la contrapropuesta")
       }
@@ -328,7 +346,7 @@ const HomeDelivery = () => {
       if (!token) { Alert.alert("Error", "Token no encontrado"); return }
 
       const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=aceptar_entrega_directa",
+        "https://www.ellasvan.com/api-rest/index.php?action=aceptar_entrega_directa",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -395,17 +413,17 @@ const HomeDelivery = () => {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.4,        // ✅ Calidad reducida para ahorrar memoria
-      allowsEditing: false,
-      base64: false,       // ✅ Sin base64 - evita crash en Android
-    })
+  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+  quality: 0.4,
+  allowsEditing: false,
+  base64: true,  // ← cambiar a true
+})
 
-    if (result.canceled || !result.assets?.[0]) return
+if (result.canceled || !result.assets?.[0]) return
 
-    setPhotoUri(result.assets[0].uri)
-    setPhotoBase64(null)
-    setShowPhotoModal(true)
+setPhotoUri(result.assets[0].uri)
+setPhotoBase64(result.assets[0].base64 ?? null)  // ← cambiar null por esto
+setShowPhotoModal(true)
   }
 
   // PASO 2A: Repetir foto
@@ -425,26 +443,22 @@ const HomeDelivery = () => {
       const token = await AsyncStorage.getItem("token")
       if (!token) throw new Error("Token no encontrado")
 
-      // ✅ FormData - mucho más eficiente que base64, igual que Uber/Didi/Rappi
-      const formData = new FormData()
-      formData.append("entrega_id", acceptedDelivery.id)
-      formData.append("foto", {
-        uri: photoUri,
-        name: `entrega_${acceptedDelivery.id}.jpg`,
-        type: "image/jpeg",
-      } as any)
+     
 
       const uploadResponse = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=subir_foto_entrega",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-          body: formData,
-        }
-      )
+  "https://www.ellasvan.com/api-rest/index.php?action=subir_foto_entrega",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      entrega_id: acceptedDelivery.id,
+      foto_base64: photoBase64,
+    }),
+  }
+)
 
       const uploadData = await uploadResponse.json()
 
@@ -454,7 +468,7 @@ const HomeDelivery = () => {
 
       // Finalizar entrega
       const finalizeResponse = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=finalizar_entrega",
+        "https://www.ellasvan.com/api-rest/index.php?action=finalizar_entrega",
         {
           method: "POST",
           headers: {
@@ -498,7 +512,7 @@ const HomeDelivery = () => {
           try {
             const token = await AsyncStorage.getItem("token")
             const response = await fetch(
-              "https://www.pinkdrivers.com/api-rest/index.php?action=cancelar_entrega",
+              "https://www.ellasvan.com/api-rest/index.php?action=cancelar_entrega",
               {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -526,7 +540,7 @@ const HomeDelivery = () => {
     const token = await AsyncStorage.getItem("token")
     if (!token) return
     try {
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=getUser", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -546,7 +560,7 @@ const HomeDelivery = () => {
       if (!token) return
 
       const response = await fetch(
-        "https://www.pinkdrivers.com/api-rest/index.php?action=entrega_aceptada_domiciliario",
+        "https://www.ellasvan.com/api-rest/index.php?action=entrega_aceptada_domiciliario",
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const text = await response.text()
@@ -617,7 +631,7 @@ const HomeDelivery = () => {
         for (const rid of currentIds) {
           try {
             const res = await fetch(
-              `https://www.pinkdrivers.com/api-rest/index.php?action=verificar_estado_entrega&entrega_id=${rid}`,
+              `https://www.ellasvan.com/api-rest/index.php?action=verificar_estado_entrega&entrega_id=${rid}`,
               { headers: { Authorization: `Bearer ${token}` } }
             )
             if (!res.ok) {
@@ -645,7 +659,7 @@ const HomeDelivery = () => {
       }
 
       const currentIdsStr = deliveryRequests.map((r) => r.id).join(",")
-      const url = `https://www.pinkdrivers.com/api-rest/index.php?action=entregas_pendientes&checkStates=true&currentIds=${currentIdsStr}&timestamp=${now}`
+      const url = `https://www.ellasvan.com/api-rest/index.php?action=entregas_pendientes&checkStates=true&currentIds=${currentIdsStr}&timestamp=${now}`
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       const data = await response.json()
 
@@ -911,7 +925,7 @@ const HomeDelivery = () => {
         <View style={styles.priceDetailCard}>
           <Text style={styles.priceDetailLabel}>Precio acordado</Text>
           <Text style={styles.priceDetailAmount}>
-            ${acceptedDelivery.proposedPrice.toLocaleString()}
+            ${acceptedDelivery.proposedPrice.toLocaleString("es-CO")}
           </Text>
         </View>
 
@@ -1009,11 +1023,11 @@ const HomeDelivery = () => {
           <View style={styles.priceLeftSection}>
             {item.status === "negotiation" && coPrice ? (
               <View style={styles.priceNegotiationContainer}>
-                <Text style={styles.originalPrice}>${proposedPrice.toLocaleString()}</Text>
-                <Text style={styles.counterOfferPrice}>→ ${coPrice.toLocaleString()}</Text>
+                <Text style={styles.originalPrice}>${proposedPrice.toLocaleString("es-CO")}</Text>
+                <Text style={styles.counterOfferPrice}>→ ${coPrice.toLocaleString("es-CO")}</Text>
               </View>
             ) : (
-              <Text style={styles.priceAmount}>${proposedPrice.toLocaleString()}</Text>
+              <Text style={styles.priceAmount}>${proposedPrice.toLocaleString("es-CO")}</Text>
             )}
           </View>
 

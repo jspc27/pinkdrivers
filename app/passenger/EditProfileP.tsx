@@ -35,7 +35,7 @@ const EditProfileP = () => {
         return;
       }
 
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=getUser", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=getUser", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -73,7 +73,7 @@ const EditProfileP = () => {
         return;
       }
 
-      const response = await fetch("https://www.pinkdrivers.com/api-rest/index.php?action=edit_profile", {
+      const response = await fetch("https://www.ellasvan.com/api-rest/index.php?action=edit_profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
